@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>{{name}}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+<!-- LEFT CHARACTER SIDEBAR -->
+<div class="sidebar">
+
+{% for c, data in characters.items() %}
+<a href="/chat/{{c}}" class="character {% if c==name %}active{% endif %}">
+<img src="{{data.image}}" class="avatar">
+<span>{{c}}</span>
+</a>
+{% endfor %}
+
+</div>
+
+<!-- MAIN CHAT -->
+<div class="chat">
+
+<div class="top">
+<img src="{{characters[name].image}}" class="avatar">
+<div>
+<b>{{name}}</b><br>
+<span id="status">online</span>
+</div>
+</div>
+
+<div id="chat-box"></div>
+
+<div class="input">
+<input id="msg" placeholder="Type message...">
+<button onclick="send()">Send</button>
+</div>
+
+</div>
+
+<!-- RIGHT LANGUAGE BAR -->
+<div class="langbar">
+
+<h3>Language</h3>
+
+<button onclick="setLang('auto')">Auto</button>
+<button onclick="setLang('english')">English</button>
+<button onclick="setLang('hinglish')">Hinglish</button>
+<button onclick="setLang('hindi')">Hindi</button>
+
+</div>
+
+</div>
+
+<script>
+let character = "{{name}}"
+let lang = "auto"
+
+function setLang(l){
+lang = l
+alert("Language: " + l)
+}
+
+function addMessage(text, cls){
+let box = document.getElementById("chat-box")
+let div = document.createElement("div")
+div.className = cls
+div.innerText = text
+box.appendChild(div)
+box.scrollTop = box.scrollHeight
+}
+
+function setStatus(t){
+document.getElementById("status").innerText = t
+}
+
+function showTyping(){
+let box = document.getElementById("chat-box")
+let div = document.createElement("div")
+div.className = "bot typing"
+div.id = "typing"
+div.innerHTML = "typing..."
+box.appendChild(div)
+}
+
+function removeTyping(){
+let t = document.getElementById("typing")
+if(t) t.remove()
+}
+
+async function send(){
+let input = document.getElementById("msg")
+let text = input.value.trim()
+if(!text) return
+
+addMessage(text,"me")
+input.value=""
+
+setStatus("typing...")
+showTyping()
+
+let res = await fetch("/chat_api",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body: JSON.stringify({
+message:text,
+character:character,
+language:lang
+})
+})
+
+let data = await res.json()
+
+setTimeout(()=>{
+removeTyping()
+addMessage(data.reply,"bot")
+setStatus("online")
+}, 1200)
+}
+
+window.onload = () => {
+setTimeout(()=>{
+addMessage("Hey… you came back 😏","bot")
+}, 800)
+}
+</script>
+
+</body>
+</html>
