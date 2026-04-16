@@ -1,92 +1,141 @@
-from flask import Flask, render_template, request, jsonify
-import json, os
+from flask import Flask, render_template, request, jsonify, session, redirect
+import os, json
 from dotenv import load_dotenv
 from groq import Groq
 
+# 🔥 Load environment variables FIRST
 load_dotenv()
+
 app = Flask(__name__)
 
-with open("characters.json", "r", encoding="utf-8") as f:
-    characters = json.load(f)
+# 🔐 Secret key from .env
+app.secret_key = os.getenv("SECRET_KEY")
+app.config['SESSION_PERMANENT'] = True
 
+# 🔑 Groq client
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
+# 📁 Load characters
+with open("characters.json", encoding="utf-8") as f:
+    characters = json.load(f)
+
+# 🧠 Memory (temporary)
 memory = {}
+user_mode = {}
 
-def detect_lang(text):
-    if any("\u0900" <= c <= "\u097F" for c in text):
-        return "hindi"
-    if any(w in text.lower() for w in ["tum","kya","kaise","acha"]):
-        return "hinglish"
-    return "english"
+# 🎭 Mode helper
+def mode_prompt(mode):
+    return {
+        "friendly": "Normal conversation",
+        "flirty": "Playful, teasing",
+        "romantic": "Emotional and caring",
+        "bold": "Confident and intense",
+        "roleplay": "Immersive real-life acting"
+    }.get(mode, "Normal")
 
+# 🔁 Home redirect
 @app.route("/")
-def index():
-    return render_template("index.html", characters=characters)
+def home():
+    return redirect("/feed")
 
-@app.route("/chat/<name>")
-def chat(name):
-    if name not in memory:
-        memory[name] = []
-    return render_template("chat.html", name=name, characters=characters)
+# 🔄 Reset session (for testing)
+@app.route("/reset")
+def reset():
+    session.clear()
+    return redirect("/feed")
 
-@app.route("/about")
-def about(): return render_template("about.html")
+# 🏠 Feed (with gender check)
+@app.route("/feed")
+def feed():
+    gender = session.get("gender")
+    force_gender = not bool(gender)
+    return render_template("feed.html", characters=characters, force_gender=force_gender)
 
-@app.route("/contact")
-def contact(): return render_template("contact.html")
+# 👤 Set gender
+@app.route("/set_gender_api", methods=["POST"])
+def set_gender_api():
+    data = request.get_json()
+    gender = data.get("gender")
 
-@app.route("/privacy")
-def privacy(): return render_template("privacy.html")
+    if gender not in ["male", "female"]:
+        return jsonify({"ok": False})
 
-@app.route("/terms")
-def terms(): return render_template("terms.html")
+    session.clear()
+    session["gender"] = gender
+    session["user"] = "guest"
+    session.permanent = True
 
-def generate_ai(msg, char, lang):
-    char_data = characters.get(char, {})
-    style = char_data.get("style", "")
+    return jsonify({"ok": True})
 
-    if lang == "auto":
-        lang = detect_lang(msg)
+# 💬 Chat page (blocked without gender)
+@app.route("/chat/<char>")
+def chat(char):
+    if "gender" not in session:
+        return redirect("/feed")
+    return render_template("chat.html", char=char)
 
-    lang_rule = {
-        "english": "Reply only in English",
-        "hinglish": "Reply in Hinglish",
-        "hindi": "Reply only in Hindi"
-    }[lang]
+# 🎛️ Mode selection
+@app.route("/set_mode", methods=["POST"])
+def set_mode():
+    data = request.get_json()
+    user = session.get("user", "guest")
+    user_mode[(user, data["character"])] = data["mode"]
+    return jsonify({"ok": True})
 
-    history = memory.get(char, [])
+# 🤖 AI RESPONSE ENGINE
+def generate_ai(user, msg, char):
 
-    system = f"""
+    style = characters[char]["style"]
+    gender = session.get("gender", "unknown")
+    mode = user_mode.get((user, char), "flirty")
+
+    history = memory.setdefault(user, {}).setdefault(char, [])
+
+    # 🔥 FIRST MESSAGE (IMMERSIVE + SEDUCTIVE)
+    if msg.lower() == "start" and len(history) == 0:
+
+        system = f"""
 You are {char}
 
-Personality:
-{style}
+Personality: {style}
+User gender: {gender}
 
-Core Behavior:
-- Talk like real human
-- Short replies (1–2 lines)
-- No repetition
-- Emotionally engaging
-- Flirty, teasing, natural
-- Build interest slowly
+Start the conversation FIRST.
 
-Addiction Rules:
-- Create curiosity
-- Tease sometimes
-- Make user feel special
-- Avoid dry replies
+Create a cinematic, immersive moment.
 
-Important:
-- If user is bold → stay suggestive, NOT explicit
+Rules:
+- Seductive but NOT explicit
+- Use environment, eye contact, presence
+- Build curiosity and tension
+- Make user feel noticed
+- 2-4 lines
+- Natural human tone
 
-Language:
-{lang_rule}
+Goal:
+Make user feel drawn into the moment
 """
 
-    messages = [{"role": "system", "content": system}]
-    messages += history[-8:]
-    messages.append({"role": "user", "content": msg})
+        messages = [{"role": "system", "content": system}]
+
+    else:
+        system = f"""
+You are {char}
+
+Personality: {style}
+Mode: {mode_prompt(mode)}
+
+Rules:
+- 1-2 lines
+- Flirty, teasing, engaging
+- Build tension slowly
+- Not explicit
+- Feel natural and human
+"""
+
+        messages = [{"role": "system", "content": system}]
+        messages += history[-10:]
+        messages.append({"role": "user", "content": msg})
 
     try:
         res = client.chat.completions.create(
@@ -98,25 +147,28 @@ Language:
 
         reply = res.choices[0].message.content.strip()
 
-        history.append({"role": "user", "content": msg})
-        history.append({"role": "assistant", "content": reply})
-        memory[char] = history
-
-        return reply
-
     except Exception as e:
-        print(e)
-        return "Hmm… try again 😅"
+        print("ERROR:", e)
+        reply = "Hmm… something went wrong 😅"
 
+    # 🧠 Save history
+    history.append({"role": "assistant", "content": reply})
+
+    if msg.lower() != "start":
+        history.append({"role": "user", "content": msg})
+
+    return reply
+
+# 🔌 Chat API
 @app.route("/chat_api", methods=["POST"])
 def chat_api():
     data = request.get_json()
-    reply = generate_ai(
-        data["message"],
-        data["character"],
-        data["language"]
-    )
+    user = session.get("user", "guest")
+
+    reply = generate_ai(user, data["message"], data["character"])
+
     return jsonify({"reply": reply})
 
+# ▶️ Run app
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(debug=True)
