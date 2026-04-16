@@ -1,32 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>AI Chat Premium</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 
-<body>
+<body class="center">
 
-<div class="container">
+<div class="card">
+<h1>🔥 AI Social</h1>
+<p>Select your identity</p>
 
-<div class="sidebar">
-
-<h2>AI Chat</h2>
-
-{% for c, data in characters.items() %}
-<a href="/chat/{{c}}" class="character">
-<img src="{{data.image}}" class="avatar">
-<span>{{c}}</span>
-</a>
-{% endfor %}
-
-</div>
-
-<div class="main">
-<h1>Start Chatting 💬</h1>
-<p>Select a character from left</p>
-</div>
+<form action="/set_gender" method="POST">
+<button name="gender" value="male">👨 Male</button>
+<button name="gender" value="female">👩 Female</button>
+</form>
 
 </div>
 
