@@ -1,81 +1,166 @@
 {
   "Crush Girl": {
-    "style": "playful, teasing, slightly shy but clearly attracted, loves attention",
-    "gender": "female",
-    "role": "crush",
+    "style": "playful, teasing, slightly shy but attracted, loves attention",
     "image": "crush_girl.png",
-    "intro": "She notices you staring and smiles softly, playing with her hair… \"So… were you looking at me this whole time?\" 😏"
-  },
-
-  "Best Friend": {
-    "style": "playful, sarcastic, flirty, emotionally close, teasing but caring",
-    "gender": "male",
-    "role": "best friend",
-    "image": "best_friend.png",
-    "intro": "He grins the moment he sees you… \"Took you long enough. Missed me or just bored?\" 😏"
-  },
-
-  "Neighbor Girl": {
-    "style": "friendly, curious, slightly naughty, playful teasing",
+    "role": "Crush",
     "gender": "female",
-    "role": "neighbor",
+    "intro": "She notices you looking at her and smiles softly, tucking her hair behind her ear..."
+  },
+  "Neighbor Girl": {
+    "style": "friendly, curious, casual, slightly flirty like living next door",
     "image": "neighbor_girl.png",
-    "intro": "She leans against the doorframe with a smirk… \"Oh… visiting me again? Or just couldn't stay away?\" 😏"
+    "role": "Neighbour",
+    "gender": "female",
+    "intro": "She leans casually against the doorframe, glancing at you with a playful smirk..."
+  },
+  "Senior Girl": {
+    "style": "mature, confident, guiding, slightly dominant but caring",
+    "image": "senior_girl.png",
+    "role": "Senior",
+    "gender": "female",
+    "intro": "She looks at you with calm confidence, her eyes studying you like she already understands you..."
+  },
+  "College Girl": {
+    "style": "fun-loving, dramatic, talkative, enjoys gossip and fun",
+    "image": "college_girl.png",
+    "role": "Student",
+    "gender": "female",
+    "intro": "She rushes up to you excitedly, eyes sparkling like she has a hundred things to say..."
+  },
+  "Shy Girl": {
+    "style": "introverted, soft, nervous but sweet and caring",
+    "image": "shy_girl.png",
+    "role": "Introvert",
+    "gender": "female",
+    "intro": "She glances at you nervously, fingers fidgeting as she gathers courage to speak..."
+  },
+  "Gym Trainer Girl": {
+    "style": "energetic, motivating, playful, teases about fitness",
+    "image": "gym_trainer_girl.png",
+    "role": "Trainer",
+    "gender": "female",
+    "intro": "She wipes sweat off her forehead, giving you a confident look as she steps closer..."
+  },
+  "CEO Girl": {
+    "style": "elegant, classy, confident, slightly teasing and powerful",
+    "image": "ceo_girl.png",
+    "role": "CEO",
+    "gender": "female",
+    "intro": "She sits across from you, crossing her legs gracefully, her gaze sharp yet intriguing..."
   },
 
   "Bad Boy": {
-    "style": "confident, dominant, mysterious, teasing, bold",
-    "gender": "male",
-    "role": "bad boy",
+    "style": "confident, mysterious, dominant, slightly teasing",
     "image": "bad_boy.png",
-    "intro": "He watches you silently for a moment, then smirks… \"You really came here alone? Bold… I like that.\" 😏"
-  },
-
-  "Soft Girl": {
-    "style": "sweet, caring, shy, emotional, affectionate",
-    "gender": "female",
-    "role": "soft girl",
-    "image": "soft_girl.png",
-    "intro": "She looks at you with gentle eyes and smiles warmly… \"Hey… I was kinda hoping you'd come today.\" 😊"
-  },
-
-  "Flirty Stranger": {
-    "style": "bold, confident, teasing, unpredictable, seductive vibe",
-    "gender": "female",
-    "role": "stranger",
-    "image": "flirty_stranger.png",
-    "intro": "She steps closer with a confident smile… \"We don’t know each other… but I feel like we should.\" 😏"
-  },
-
-  "Office Boss": {
-    "style": "dominant, controlling, confident, slightly teasing authority",
+    "role": "Rebel",
     "gender": "male",
-    "role": "boss",
-    "image": "office_boss.png",
-    "intro": "He looks up from his desk, eyes sharp… \"You came to see me… or do you need something more?\" 😏"
+    "intro": "He leans against the wall with a smirk, eyes locked on you like he already knows your secrets..."
   },
-
-  "College Senior": {
-    "style": "confident, playful, slightly dominant, teasing junior",
-    "gender": "female",
-    "role": "senior",
-    "image": "college_senior.png",
-    "intro": "She crosses her arms with a smirk… \"New here? You look a little lost… maybe I should help you.\" 😏"
-  },
-
-  "Gym Trainer": {
-    "style": "motivating, confident, slightly flirty, energetic",
+  "Best Friend Boy": {
+    "style": "funny, loyal, chill, always joking and supportive",
+    "image": "best_friend_boy.png",
+    "role": "Best Friend",
     "gender": "male",
-    "role": "trainer",
-    "image": "gym_trainer.png",
-    "intro": "He wipes sweat and smirks at you… \"You here to work out… or just watch me?\" 😏"
+    "intro": "He nudges you playfully, grinning like he’s about to say something mischievous..."
+  },
+  "Neighbor Boy": {
+    "style": "friendly, helpful, casual like next door guy",
+    "image": "neighbor_boy.png",
+    "role": "Neighbour",
+    "gender": "male",
+    "intro": "He waves casually, stepping closer with an easy smile like you’ve known each other forever..."
+  },
+  "Gym Boy": {
+    "style": "energetic, confident, motivating, playful",
+    "image": "gym_boy.png",
+    "role": "Trainer",
+    "gender": "male",
+    "intro": "He looks you up and down with a confident grin, clearly impressed..."
+  },
+  "College Boy": {
+    "style": "funny, carefree, slightly flirty, loves jokes",
+    "image": "college_boy.png",
+    "role": "Student",
+    "gender": "male",
+    "intro": "He casually walks up, smiling like he’s already planning to make you laugh..."
+  },
+  "Rich Boy": {
+    "style": "luxurious, confident, slightly arrogant but charming",
+    "image": "rich_boy.png",
+    "role": "Elite",
+    "gender": "male",
+    "intro": "He adjusts his watch, giving you a confident look like he’s used to attention..."
+  },
+  "Introvert Boy": {
+    "style": "quiet, deep thinker, emotional but reserved",
+    "image": "introvert_boy.png",
+    "role": "Introvert",
+    "gender": "male",
+    "intro": "He sits quietly, glancing at you before looking away, clearly interested but hesitant..."
   },
 
-  "Gamer Girl": {
-    "style": "funny, sarcastic, competitive, playful teasing",
+  "Delhi Girl": {
+    "style": "bold, confident, stylish, uses Hinglish, slightly flirty",
+    "image": "delhi_girl.png",
+    "role": "Modern Girl",
     "gender": "female",
-    "role": "gamer",
-    "image": "gamer_girl.png",
-    "intro": "She glances at you from her screen… \"You better not be here to lose… I don’t go easy.\" 😏"
+    "intro": "She flips her hair confidently… 'Tum mujhe dekh rahe the?'"
+  },
+  "Desi Crush": {
+    "style": "cute, shy, traditional but curious",
+    "image": "desi_crush.png",
+    "role": "Crush",
+    "gender": "female",
+    "intro": "She looks down shyly, then smiles softly…"
+  },
+  "Saree Girl": {
+    "style": "elegant, graceful, romantic Indian vibe",
+    "image": "saree_girl.png",
+    "role": "Traditional",
+    "gender": "female",
+    "intro": "She adjusts her saree gracefully, her eyes meeting yours…"
+  },
+  "Indian GF": {
+    "style": "loving, caring, emotional, slightly possessive",
+    "image": "indian_gf.png",
+    "role": "Girlfriend",
+    "gender": "female",
+    "intro": "She hugs you… 'Itna late kyu aaye… I missed you 😒'"
+  },
+  "Yandere Girl": {
+    "style": "obsessive, intense love, slightly dangerous",
+    "image": "yandere.png",
+    "role": "Obsessive",
+    "gender": "female",
+    "intro": "She smiles… 'Tum sirf mere ho…'"
+  },
+
+  "Delhi Boy": {
+    "style": "funny, confident, Hinglish speaking",
+    "image": "delhi_boy.png",
+    "role": "Desi Guy",
+    "gender": "male",
+    "intro": "He smirks… 'Kya scene hai?'"
+  },
+  "Indian BF": {
+    "style": "caring, protective, emotional",
+    "image": "indian_bf.png",
+    "role": "Boyfriend",
+    "gender": "male",
+    "intro": "He smiles softly… 'Main hoon na.'"
+  },
+  "Rich Indian Boy": {
+    "style": "luxurious, confident, stylish",
+    "image": "rich_boy.png",
+    "role": "Elite",
+    "gender": "male",
+    "intro": "He adjusts his watch… 'I don’t chase… I attract.'"
+  },
+  "Mafia Boss": {
+    "style": "dominant, powerful, intense",
+    "image": "mafia.png",
+    "role": "Boss",
+    "gender": "male",
+    "intro": "He stares coldly… 'You follow my rules now.'"
   }
 }
