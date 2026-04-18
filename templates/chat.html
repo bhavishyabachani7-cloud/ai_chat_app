@@ -1,117 +1,57 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="/static/style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&display=swap" rel="stylesheet">
 </head>
 
 <body>
 
-<div class="chat-header">
-  <div class="avatar"></div>
-  <div>
-    <div class="name">{{char}}</div>
-    <div class="status">online</div>
+<div class="chat-container">
+
+  <!-- HEADER -->
+  <div class="chat-header glass">
+    <img src="{{ url_for('static', filename=characters[char].image) }}">
+    <div class="chat-info">
+      <div class="name">{{char}}</div>
+      <div class="status">{{characters[char].role}}</div>
+    </div>
   </div>
-</div>
 
-<div id="chat-box"></div>
+  <!-- CATEGORY BAR -->
+  <div class="categories">
+    <button onclick="setMode('friendly', this)" class="active">😊</button>
+    <button onclick="setMode('romantic', this)">❤️</button>
+    <button onclick="setMode('bold', this)">😏</button>
+    <button onclick="setMode('intense', this)">🔥</button>
+    <button onclick="setMode('roleplay', this)">🎭</button>
+  </div>
 
-<div class="input-bar">
-  <input id="msg" placeholder="Type your message...">
-  <button onclick="send()">➤</button>
-</div>
+  <!-- CHAT AREA -->
+  <div id="chat-box"></div>
 
-<div class="mode-bar">
-  <button class="active" onclick="setMode('friendly',this)">Friendly</button>
-  <button onclick="setMode('flirty',this)">Flirty</button>
-  <button onclick="setMode('romantic',this)">Romantic</button>
-  <button onclick="setMode('bold',this)">Bold</button>
-  <button onclick="setMode('roleplay',this)">Roleplay</button>
+  <!-- TYPING -->
+  <div id="typing" class="typing">
+    <span></span><span></span><span></span>
+  </div>
+
+  <!-- INPUT -->
+  <div class="chat-input glass">
+    <input id="msg" placeholder="Say something...">
+    <button onclick="sendMsg()">➤</button>
+  </div>
+
 </div>
 
 <script>
-let character="{{char}}"
-
-function setMode(mode,btn){
-document.querySelectorAll(".mode-bar button").forEach(b=>b.classList.remove("active"))
-btn.classList.add("active")
-
-fetch("/set_mode",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({character:character,mode:mode})
-})
-}
-
-function add(type,text){
-let div=document.createElement("div")
-div.className="msg "+type
-div.innerText=text
-document.getElementById("chat-box").appendChild(div)
-scrollDown()
-}
-
-function scrollDown(){
-let box=document.getElementById("chat-box")
-box.scrollTop=box.scrollHeight
-}
-
-function showTyping(){
-let div=document.createElement("div")
-div.className="msg bot typing"
-div.id="typing"
-div.innerText="Typing..."
-document.getElementById("chat-box").appendChild(div)
-scrollDown()
-}
-
-function removeTyping(){
-let t=document.getElementById("typing")
-if(t) t.remove()
-}
-
-window.onload = async function(){
-showTyping()
-
-let res = await fetch("/chat_api",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({message:"start",character:character})
-})
-
-let data = await res.json()
-
-setTimeout(()=>{
-removeTyping()
-add("bot",data.reply)
-},1200)
-}
-
-async function send(){
-let input=document.getElementById("msg")
-let msg=input.value.trim()
-if(!msg) return
-
-add("me",msg)
-input.value=""
-
-showTyping()
-
-let res = await fetch("/chat_api",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({message:msg,character:character})
-})
-
-let data = await res.json()
-
-setTimeout(()=>{
-removeTyping()
-add("bot",data.reply)
-},800)
-}
+const CHARACTER = "{{char}}";
 </script>
+
+<script src="{{ url_for('static', filename='chat.js') }}"></script>
 
 </body>
 </html>
