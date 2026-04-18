@@ -1,110 +1,126 @@
-let character;
-let lang = "auto";
-let idleTimer;
+// ---------------- ELEMENTS ----------------
+const box = document.getElementById("chat-box");
+const input = document.getElementById("msg");
+const typing = document.getElementById("typing");
 
-function addMessage(text,type){
-    let box = document.getElementById("chat-box");
+// ---------------- ADD MESSAGE ----------------
+function addMessage(text, sender) {
 
-    let div = document.createElement("div");
-    div.className = "msg " + type;
+    const div = document.createElement("div");
+    div.className = "message " + sender;
 
-    if(text.includes("🔒")){
-        div.classList.add("lock");
+    // BOT AVATAR
+    if (sender === "bot") {
+        const img = document.createElement("img");
+        img.src = document.querySelector(".chat-header img").src;
+        img.className = "avatar";
+        div.appendChild(img);
     }
 
-    div.innerText = text;
+    // MESSAGE BUBBLE
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.innerText = text;
 
+    div.appendChild(bubble);
     box.appendChild(div);
+
+    // AUTO SCROLL
     box.scrollTop = box.scrollHeight;
 }
 
-function typing(){
-    let box = document.getElementById("chat-box");
-    let t = document.createElement("div");
-    t.id="typing";
-    t.className="msg bot";
-    t.innerText="typing...";
-    box.appendChild(t);
-}
+// ---------------- SEND MESSAGE ----------------
+function sendMsg() {
 
-function removeTyping(){
-    let t=document.getElementById("typing");
-    if(t) t.remove();
-}
+    const msg = input.value.trim();
+    if (!msg) return;
 
-async function send(){
-    let input=document.getElementById("msg");
-    let text=input.value.trim();
-    if(!text) return;
+    addMessage(msg, "me");
+    input.value = "";
 
-    addMessage(text,"me");
-    input.value="";
+    showTyping();
 
-    typing();
-
-    let res=await fetch("/chat_api",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-            message:text,
-            character:character,
-            language:lang
+    fetch("/chat_api", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            message: msg,
+            character: CHARACTER
         })
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        const delay = Math.min(1500, msg.length * 40);
+
+        setTimeout(() => {
+            hideTyping();
+            addMessage(data.reply, "bot");
+        }, delay);
+
+    })
+    .catch(() => {
+        hideTyping();
+        addMessage("Something went wrong 😅", "bot");
+    });
+}
+
+// ---------------- ENTER KEY ----------------
+input.addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        sendMsg();
+    }
+});
+
+// ---------------- TYPING CONTROL ----------------
+function showTyping() {
+    typing.style.display = "block";
+    box.scrollTop = box.scrollHeight;
+}
+
+function hideTyping() {
+    typing.style.display = "none";
+}
+
+// ---------------- CATEGORY SYSTEM ----------------
+function setMode(mode, el) {
+
+    fetch("/set_mode", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({mode: mode})
     });
 
-    let data=await res.json();
+    document.querySelectorAll(".categories button")
+        .forEach(btn => btn.classList.remove("active"));
 
-    setTimeout(()=>{
-        removeTyping();
-        addMessage(data.reply,"bot");
-        speak(data.reply);
-
-        if(Math.random()>0.7){
-            fetch("/image/"+character)
-            .then(res=>res.json())
-            .then(d=>{
-                let img=document.createElement("img");
-                img.src=d.img;
-                img.style.maxWidth="200px";
-                document.getElementById("chat-box").appendChild(img);
-            });
-        }
-
-        startIdle();
-    },800+Math.random()*1000);
+    if (el) el.classList.add("active");
 }
 
-function startIdle(){
-    clearTimeout(idleTimer);
-    idleTimer=setTimeout(async()=>{
-        let res=await fetch("/idle/"+character);
-        let data=await res.json();
-        addMessage(data.reply,"bot");
-    },15000);
-}
+// ---------------- AUTO FIRST MESSAGE ----------------
+window.onload = function () {
 
-function startVoice(){
-    let rec=new webkitSpeechRecognition();
-    rec.lang="en-IN";
-    rec.onresult=function(e){
-        document.getElementById("msg").value=e.results[0][0].transcript;
-    };
-    rec.start();
-}
+    showTyping();
 
-function speak(text){
-    let speech=new SpeechSynthesisUtterance(text);
-    speech.rate=1;
-    speech.pitch=1.2;
-    speechSynthesis.speak(speech);
-}
+    fetch("/chat_api", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            message: "start",
+            character: CHARACTER
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
 
-window.onload=()=>{
-    character=document.body.dataset.name;
+        setTimeout(() => {
+            hideTyping();
+            addMessage(data.reply, "bot");
+        }, 800);
 
-    setTimeout(()=>{
-        addMessage("Hey… you came back 😏","bot");
-    },800);
-
-    startIdle();
+    })
+    .catch(() => {
+        hideTyping();
+        addMessage("Hey… looks like something broke 😅", "bot");
+    });
 };
