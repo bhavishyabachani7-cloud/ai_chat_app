@@ -1,21 +1,34 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="/static/style.css">
+<title>Choose Character</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
-<body class="center">
+<body>
 
-<div class="card">
-<h1>🔥 AI Social</h1>
-<p>Select your identity</p>
+<div class="feed-header">
+  <h2>Choose Your Character</h2>
+  <span>Pick your vibe 😏</span>
+</div>
 
-<form action="/set_gender" method="POST">
-<button name="gender" value="male">👨 Male</button>
-<button name="gender" value="female">👩 Female</button>
-</form>
+<div class="grid">
+{% for name, c in characters.items() %}
+  <a href="/chat/{{name}}" class="card">
 
+    <div class="img-box">
+      <img src="{{ url_for('static', filename=c.image) }}">
+      <div class="overlay"></div>
+    </div>
+
+    <div class="info">
+      <h3>{{name}}</h3>
+      <p>{{c.role}}</p>
+    </div>
+
+  </a>
+{% endfor %}
 </div>
 
 </body>
