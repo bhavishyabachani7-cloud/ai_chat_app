@@ -1,71 +1,38 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="/static/style.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
 <body>
 
-<!-- 🔥 GENDER MODAL -->
-<div id="genderModal" class="modal"
-     style="{% if not force_gender %}display:none{% endif %}">
+<div class="feed-header">
+  <h2>Explore</h2>
+  <span>Find your vibe 😏</span>
+</div>
 
-  <div class="modal-content">
-    <h2>Before we begin…</h2>
-    <p>Select your identity</p>
+<div class="search-bar">
+  <input placeholder="Search characters...">
+</div>
 
-    <button onclick="setGender('male')">Male</button>
-    <button onclick="setGender('female')">Female</button>
+<div class="feed">
+{% for name,c in characters.items() %}
+<a href="/chat/{{name}}" class="card">
+
+  <div class="img-box">
+    <img src="{{ url_for('static', filename=c.image) }}">
+    <div class="overlay"></div>
   </div>
 
+  <div class="info">
+    <h3>{{name}}</h3>
+    <p>{{c.style}}</p>
+  </div>
+
+</a>
+{% endfor %}
 </div>
-
-<!-- 🔥 FEED -->
-<div class="feed" id="mainFeed"
-     style="{% if force_gender %}display:none{% endif %}">
-
-  {% for name, c in characters.items() %}
-  <a class="post" href="/chat/{{name}}">
-    <img src="{{c.image}}">
-    <div>
-      <h3>{{name}}</h3>
-      <p>{{c.style}}</p>
-    </div>
-  </a>
-  {% endfor %}
-
-</div>
-
-<script>
-window.onload = function(){
-
-  let force = {{ 'true' if force_gender else 'false' }}
-
-  if(force){
-    document.getElementById("genderModal").style.display="flex"
-    document.getElementById("mainFeed").style.display="none"
-    document.body.style.overflow="hidden"
-  }else{
-    document.getElementById("mainFeed").style.display="block"
-  }
-
-}
-
-function setGender(g){
-
-fetch("/set_gender_api",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({gender:g})
-})
-.then(res=>res.json())
-.then(()=>{
-  location.href="/feed"
-})
-
-}
-</script>
 
 </body>
 </html>
