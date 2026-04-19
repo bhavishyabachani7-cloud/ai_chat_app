@@ -1,38 +1,91 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Explore</title>
+
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
 <body>
 
+<!-- 🔥 GENDER SELECTION OVERLAY -->
+<div id="gender-screen" class="gender-screen">
+  <div class="gender-box glass">
+    <h2>Select Your Gender</h2>
+
+    <button onclick="setGender('male')">👦 Male</button>
+    <button onclick="setGender('female')">👧 Female</button>
+  </div>
+</div>
+
+<!-- HEADER -->
 <div class="feed-header">
   <h2>Explore</h2>
   <span>Find your vibe 😏</span>
 </div>
 
+<!-- SEARCH -->
 <div class="search-bar">
-  <input placeholder="Search characters...">
+  <input type="text" placeholder="Search characters..." id="searchBox">
 </div>
 
-<div class="feed">
-{% for name,c in characters.items() %}
-<a href="/chat/{{name}}" class="card">
+<!-- FEED -->
+<div class="feed" id="feed">
+
+{% for name, c in characters.items() %}
+<a href="/chat/{{ name }}" class="card">
 
   <div class="img-box">
-    <img src="{{ url_for('static', filename=c.image) }}">
+    <img src="{{ url_for('static', filename=c.image) }}" alt="{{ name }}">
     <div class="overlay"></div>
   </div>
 
   <div class="info">
-    <h3>{{name}}</h3>
-    <p>{{c.style}}</p>
+    <h3>{{ name }}</h3>
+    <p>{{ c.style }}</p>
   </div>
 
 </a>
 {% endfor %}
+
 </div>
+
+<!-- 🔥 GENDER + BASIC JS -->
+<script>
+
+function setGender(gender) {
+  fetch("/set_gender", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ gender })
+  });
+
+  document.getElementById("gender-screen").style.display = "none";
+}
+
+// show only once
+window.onload = function () {
+  document.getElementById("gender-screen").style.display = "flex";
+};
+
+
+// OPTIONAL: SEARCH FILTER (nice upgrade, no UI change)
+document.getElementById("searchBox").addEventListener("input", function () {
+  let value = this.value.toLowerCase();
+  let cards = document.querySelectorAll(".card");
+
+  cards.forEach(card => {
+    let text = card.innerText.toLowerCase();
+    card.style.display = text.includes(value) ? "block" : "none";
+  });
+});
+
+</script>
 
 </body>
 </html>
