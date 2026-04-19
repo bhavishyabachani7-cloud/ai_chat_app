@@ -1,126 +1,99 @@
-// ---------------- ELEMENTS ----------------
-const box = document.getElementById("chat-box");
-const input = document.getElementById("msg");
+const chatBox = document.getElementById("chat-box");
 const typing = document.getElementById("typing");
 
-// ---------------- ADD MESSAGE ----------------
-function addMessage(text, sender) {
+// ---------------- MODE ---------------- //
+function setMode(mode, btn) {
 
-    const div = document.createElement("div");
-    div.className = "message " + sender;
+  fetch("/set_mode", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({mode})
+  });
 
-    // BOT AVATAR
-    if (sender === "bot") {
-        const img = document.createElement("img");
-        img.src = document.querySelector(".chat-header img").src;
-        img.className = "avatar";
-        div.appendChild(img);
-    }
+  document.querySelectorAll(".categories button")
+    .forEach(b => b.classList.remove("active"));
 
-    // MESSAGE BUBBLE
-    const bubble = document.createElement("div");
-    bubble.className = "bubble";
-    bubble.innerText = text;
+  btn.classList.add("active");
+}
 
+// ---------------- MESSAGE UI ---------------- //
+function addMessage(text, sender = "bot") {
+  const div = document.createElement("div");
+  div.classList.add("message", sender);
+
+  const bubble = document.createElement("div");
+  bubble.classList.add("bubble");
+  bubble.innerText = text;
+
+  const avatar = document.createElement("img");
+  avatar.classList.add("avatar");
+
+  // ✅ FIXED AVATAR SYSTEM
+  if (sender === "bot") {
+    avatar.src = "/static/" + CHARACTER_IMAGE;
+  } else {
+    avatar.src = "/static/user.png";
+  }
+
+  if (sender === "bot") {
+    div.appendChild(avatar);
     div.appendChild(bubble);
-    box.appendChild(div);
+  } else {
+    div.appendChild(bubble);
+  }
 
-    // AUTO SCROLL
-    box.scrollTop = box.scrollHeight;
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// ---------------- SEND MESSAGE ----------------
-function sendMsg() {
+// ---------------- FIRST MESSAGE ---------------- //
+async function loadFirstMessage() {
 
-    const msg = input.value.trim();
-    if (!msg) return;
+  typing.style.display = "block";
 
-    addMessage(msg, "me");
-    input.value = "";
+  const res = await fetch("/first_message", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({character: CHARACTER})
+  });
 
-    showTyping();
+  const data = await res.json();
 
-    fetch("/chat_api", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            message: msg,
-            character: CHARACTER
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-
-        const delay = Math.min(1500, msg.length * 40);
-
-        setTimeout(() => {
-            hideTyping();
-            addMessage(data.reply, "bot");
-        }, delay);
-
-    })
-    .catch(() => {
-        hideTyping();
-        addMessage("Something went wrong 😅", "bot");
-    });
+  typing.style.display = "none";
+  addMessage(data.reply, "bot");
 }
 
-// ---------------- ENTER KEY ----------------
-input.addEventListener("keypress", function(e) {
-    if (e.key === "Enter") {
-        sendMsg();
-    }
+// ---------------- SEND MESSAGE ---------------- //
+async function sendMsg() {
+  const input = document.getElementById("msg");
+  const text = input.value.trim();
+
+  if (!text) return;
+
+  addMessage(text, "me");
+  input.value = "";
+
+  typing.style.display = "block";
+
+  const res = await fetch("/chat_api", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      message: text,
+      character: CHARACTER
+    })
+  });
+
+  const data = await res.json();
+
+  typing.style.display = "none";
+  addMessage(data.reply, "bot");
+}
+
+// ENTER KEY
+document.getElementById("msg").addEventListener("keypress", e => {
+  if (e.key === "Enter") sendMsg();
 });
 
-// ---------------- TYPING CONTROL ----------------
-function showTyping() {
-    typing.style.display = "block";
-    box.scrollTop = box.scrollHeight;
-}
-
-function hideTyping() {
-    typing.style.display = "none";
-}
-
-// ---------------- CATEGORY SYSTEM ----------------
-function setMode(mode, el) {
-
-    fetch("/set_mode", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({mode: mode})
-    });
-
-    document.querySelectorAll(".categories button")
-        .forEach(btn => btn.classList.remove("active"));
-
-    if (el) el.classList.add("active");
-}
-
-// ---------------- AUTO FIRST MESSAGE ----------------
-window.onload = function () {
-
-    showTyping();
-
-    fetch("/chat_api", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            message: "start",
-            character: CHARACTER
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-
-        setTimeout(() => {
-            hideTyping();
-            addMessage(data.reply, "bot");
-        }, 800);
-
-    })
-    .catch(() => {
-        hideTyping();
-        addMessage("Hey… looks like something broke 😅", "bot");
-    });
-};
+// AUTO START
+window.onload = loadFirstMessage;
