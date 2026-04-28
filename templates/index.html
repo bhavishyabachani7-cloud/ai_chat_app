@@ -2,6 +2,16 @@
 <html>
 <head>
 <title>Choose Character</title>
+
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-LL1W3YZC05"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-LL1W3YZC05');
+</script>
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -10,11 +20,11 @@
 
 <div class="feed-header">
   <h2>Choose Your Character</h2>
-  <span>Pick your vibe 😏</span>
+  <span>Pick your vibe 🟡</span>
 </div>
 
 <div class="grid">
-{% for name, c in characters.items() %}
+  {% for name, c in characters.items() %}
   <a href="/chat/{{name}}" class="card">
 
     <div class="img-box">
@@ -28,7 +38,7 @@
     </div>
 
   </a>
-{% endfor %}
+  {% endfor %}
 </div>
 
 </body>
