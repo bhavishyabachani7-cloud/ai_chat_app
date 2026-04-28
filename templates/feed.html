@@ -1,21 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- Google tag (gtag.js) -->
+
+<!-- Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-LL1W3YZC05"></script>
 <script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-LL1W3YZC05');
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-LL1W3YZC05');
 </script>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
 </head>
 
 <body>
 
-<!-- 🔥 GENDER SELECTION OVERLAY -->
-<div id="gender-screen" class="gender-screen">
+<!-- 🔥 GENDER OVERLAY -->
+<div id="gender-screen" class="gender-screen" style="display:none;">
   <div class="gender-box glass">
     <h2>Select Your Gender</h2>
 
@@ -37,7 +41,6 @@
 
 <!-- FEED -->
 <div class="feed" id="feed">
-
 {% for name, c in characters.items() %}
 <a href="/chat/{{ name }}" class="card">
 
@@ -53,12 +56,18 @@
 
 </a>
 {% endfor %}
-
 </div>
 
-<!-- 🔥 GENDER + BASIC JS -->
 <script>
 
+// ✅ SHOW OVERLAY ONLY ONCE (FIXED)
+window.addEventListener("load", function () {
+  if (!localStorage.getItem("genderSelected")) {
+    document.getElementById("gender-screen").style.display = "flex";
+  }
+});
+
+// ✅ SET GENDER (FIXED)
 function setGender(gender) {
   fetch("/set_gender", {
     method: "POST",
@@ -68,16 +77,12 @@ function setGender(gender) {
     body: JSON.stringify({ gender })
   });
 
+  localStorage.setItem("genderSelected", "true"); // save
+
   document.getElementById("gender-screen").style.display = "none";
 }
 
-// show only once
-window.onload = function () {
-  document.getElementById("gender-screen").style.display = "flex";
-};
-
-
-// OPTIONAL: SEARCH FILTER (nice upgrade, no UI change)
+// ✅ SEARCH FILTER
 document.getElementById("searchBox").addEventListener("input", function () {
   let value = this.value.toLowerCase();
   let cards = document.querySelectorAll(".card");
