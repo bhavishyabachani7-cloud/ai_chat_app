@@ -1,17 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- Google tag (gtag.js) -->
+
+<!-- Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-LL1W3YZC05"></script>
 <script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-LL1W3YZC05');
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-LL1W3YZC05');
 </script>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
 </head>
-  
+
 <body>
 
 <div class="chat-container">
@@ -25,7 +29,7 @@
     </div>
   </div>
 
-  <!-- CATEGORY BAR -->
+  <!-- CATEGORY -->
   <div class="categories">
     <button onclick="setMode('friendly', this)" class="active">😊</button>
     <button onclick="setMode('romantic', this)">❤️</button>
@@ -34,7 +38,7 @@
     <button onclick="setMode('roleplay', this)">🎭</button>
   </div>
 
-  <!-- CHAT AREA -->
+  <!-- CHAT -->
   <div id="chat-box"></div>
 
   <!-- TYPING -->
@@ -50,7 +54,7 @@
 
 </div>
 
-<!-- ✅ FIXED SCRIPT -->
+<!-- IMPORTANT VARIABLES -->
 <script>
 const CHARACTER = "{{char}}";
 const CHARACTER_IMAGE = "{{ characters[char].image }}";
