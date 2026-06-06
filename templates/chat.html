@@ -1,65 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
-<!-- Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-LL1W3YZC05"></script>
-<script>
-window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', 'G-LL1W3YZC05');
-</script>
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Chat Room</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-
 <body>
 
 <div class="chat-container">
 
-  <!-- HEADER -->
-  <div class="chat-header glass">
-    <img src="{{ url_for('static', filename=characters[char].image) }}">
-    <div class="chat-info">
-      <div class="name">{{char}}</div>
-      <div class="status">{{characters[char].role}}</div>
+    <div class="chat-header glass">
+        <div class="chat-header-left">
+            <img src="{{ url_for('static', filename=characters[char].image) }}" alt="{{ char }}">
+            <div class="chat-info">
+                <div class="name">{{ char }}</div>
+                <div class="status">Online & Responsive</div>
+            </div>
+        </div>
+        <a href="/feed" class="back-feed-btn">✕ Leave Room</a>
     </div>
-  </div>
 
-  <!-- CATEGORY -->
-  <div class="categories">
-    <button onclick="setMode('friendly', this)" class="active">😊</button>
-    <button onclick="setMode('romantic', this)">❤️</button>
-    <button onclick="setMode('bold', this)">😏</button>
-    <button onclick="setMode('intense', this)">🔥</button>
-    <button onclick="setMode('roleplay', this)">🎭</button>
-  </div>
+    <div class="categories">
+        <button onclick="setMode('friendly', this)" class="active">😊 Casual</button>
+        <button onclick="setMode('romantic', this)">❤️ Romantic</button>
+        <button onclick="setMode('bold', this)">😏 Seductive</button>
+        <button onclick="setMode('intense', this)">🔥 Uninhibited</button>
+        <button onclick="setMode('roleplay', this)">🎭 Story-Driven</button>
+    </div>
 
-  <!-- CHAT -->
-  <div id="chat-box"></div>
+    <div id="chat-box"></div>
 
-  <!-- TYPING -->
-  <div id="typing" class="typing">
-    <span></span><span></span><span></span>
-  </div>
+    <div id="typing" class="typing" style="display: none;">
+        <span></span><span></span><span></span>
+    </div>
 
-  <!-- INPUT -->
-  <div class="chat-input glass">
-    <input id="msg" placeholder="Say something...">
-    <button onclick="sendMsg()">➤</button>
-  </div>
+    <div id="chat-banner-ad" style="width: 100%; text-align: center; padding: 5px 30px 0;">
+        </div>
+
+    <div class="chat-input-area">
+        <div class="chat-input-wrapper glass glow-glow">
+            <input id="msg" placeholder="Type an action or reply here..." autocomplete="off">
+            <button onclick="sendMsg()">➤</button>
+        </div>
+    </div>
 
 </div>
 
-<!-- IMPORTANT VARIABLES -->
 <script>
-const CHARACTER = "{{char}}";
-const CHARACTER_IMAGE = "{{ characters[char].image }}";
+    const CHARACTER = "{{ char }}";
+    const CHARACTER_IMAGE = "{{ characters[char].image }}";
 </script>
-
 <script src="{{ url_for('static', filename='chat.js') }}"></script>
 
 </body>
