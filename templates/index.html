@@ -1,46 +1,32 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Choose Character</title>
-
-<!-- Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-LL1W3YZC05"></script>
-<script>
-window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', 'G-LL1W3YZC05');
-</script>
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus AI — Select Persona</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-
 <body>
 
-<div class="feed-header">
-  <h2>Choose Your Character</h2>
-  <span>Pick your vibe 🟡</span>
-</div>
-
-<div class="grid">
-  {% for name, c in characters.items() %}
-  <a href="/chat/{{name}}" class="card">
-
-    <div class="img-box">
-      <img src="{{ url_for('static', filename=c.image) }}">
-      <div class="overlay"></div>
+    <div class="feed-header">
+        <h2>Choose Your Companion</h2>
+        <span>Select an entity to initiate an unfiltered roleplay session</span>
     </div>
 
-    <div class="info">
-      <h3>{{name}}</h3>
-      <p>{{c.role}}</p>
+    <div class="feed">
+        {% for name, c in characters.items() %}
+        <a href="/chat/{{ name }}" class="card">
+            <div class="img-box">
+                <img src="{{ url_for('static', filename=c.image) }}" alt="{{ name }}">
+                <div class="overlay"></div>
+            </div>
+            <div class="info">
+                <h3>{{ name }}</h3>
+                <p>{{ c.role }}</p>
+            </div>
+        </a>
+        {% endfor %}
     </div>
-
-  </a>
-  {% endfor %}
-</div>
 
 </body>
 </html>
