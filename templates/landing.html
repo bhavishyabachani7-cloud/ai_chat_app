@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Luxury AI — Enter the Space</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+<body class="landing-body">
+
+    <div class="landing-card">
+        <h1 class="brand-title">NEXUS<span>AI</span></h1>
+        <p class="brand-subtitle">Choose your avatar matrix profile to unlock uninhibited, fluid interaction streams.</p>
+        
+        <hr class="neon-divider">
+
+        <form id="onboarding-form" onsubmit="submitOnboarding(event)">
+            <label class="section-label">Select Your Gender Identity:</label>
+            <div class="gender-selector-grid">
+                <label class="gender-card">
+                    <input type="radio" name="gender" value="male" required>
+                    <div class="gender-box male-glow">
+                        <span class="gender-icon">♂</span>
+                        <span class="gender-text">Male Identity</span>
+                    </div>
+                </label>
+
+                <label class="gender-card">
+                    <input type="radio" name="gender" value="female">
+                    <div class="gender-box female-glow">
+                        <span class="gender-icon">♀</span>
+                        <span class="gender-text">Female Identity</span>
+                    </div>
+                </label>
+            </div>
+
+            <div class="compliance-wrapper">
+                <label class="checkbox-container">
+                    <input type="checkbox" required>
+                    <span class="checkmark"></span>
+                    <p class="compliance-text">I confirm that I am 18+ to unlock restricted roleplay and immersive character interactions.</p>
+                </label>
+            </div>
+
+            <button type="submit" class="glow-submit-btn">ENTER METRIC CORE</button>
+        </form>
+
+        <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: center; gap: 12px;">
+            <a href="/privacy-policy" style="color: #a097b2; font-size: 0.75rem; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#a097b2'">Privacy Policy</a>
+            <span style="color: rgba(255,255,255,0.15); font-size: 0.75rem;">|</span>
+            <a href="/terms" style="color: #a097b2; font-size: 0.75rem; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#a097b2'">Terms of Service</a>
+        </div>
+    </div>
+
+    <script>
+        async function submitOnboarding(event) {
+            event.preventDefault();
+            const selectedGender = document.querySelector('input[name="gender"]:checked').value;
+            
+            try {
+                const response = await fetch("/set_gender", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ gender: selectedGender })
+                });
+                const data = await response.json();
+                if(data.ok) {
+                    window.location.href = "/feed"; 
+                }
+            } catch(err) {
+                console.error("Transmission fault resolving gate:", err);
+            }
+        }
+    </script>
+</body>
+</html>
