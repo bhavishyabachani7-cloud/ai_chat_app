@@ -1,99 +1,122 @@
 const chatBox = document.getElementById("chat-box");
-const typing = document.getElementById("typing");
+const typingIndicator = document.getElementById("typing");
+const msgInput = document.getElementById("msg");
 
-// ---------------- MODE ---------------- //
-function setMode(mode, btn) {
+let isWaitingForBot = false;
 
-  fetch("/set_mode", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({mode})
-  });
+function setMode(mode, btnElement) {
+    if (!btnElement) return;
+    
+    fetch("/set_mode", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ mode })
+    }).catch(err => console.error("Error setting mode profile:", err));
 
-  document.querySelectorAll(".categories button")
-    .forEach(b => b.classList.remove("active"));
-
-  btn.classList.add("active");
+    document.querySelectorAll(".categories button").forEach(btn => btn.classList.remove("active"));
+    btnElement.classList.add("active");
 }
 
-// ---------------- MESSAGE UI ---------------- //
+function formatRoleplayText(text) {
+    if (!text) return "";
+    return text.replace(/\*(.*?)\*/g, '<em class="roleplay-action">*$1*</em>');
+}
+
+function scrollToBottom() {
+    setTimeout(() => {
+        chatBox.scrollTo({
+            top: chatBox.scrollHeight,
+            behavior: 'smooth'
+        });
+    }, 50);
+}
+
 function addMessage(text, sender = "bot") {
-  const div = document.createElement("div");
-  div.classList.add("message", sender);
+    const messageContainer = document.createElement("div");
+    messageContainer.classList.add("message", sender, "fade-in-bubble");
 
-  const bubble = document.createElement("div");
-  bubble.classList.add("bubble");
-  bubble.innerText = text;
+    const textBubble = document.createElement("div");
+    textBubble.classList.add("bubble");
+    textBubble.innerHTML = formatRoleplayText(text);
 
-  const avatar = document.createElement("img");
-  avatar.classList.add("avatar");
+    if (sender === "bot") {
+        const profileAvatar = document.createElement("img");
+        profileAvatar.classList.add("avatar");
+        profileAvatar.src = "/static/" + CHARACTER_IMAGE;
+        profileAvatar.onload = scrollToBottom;
+        messageContainer.appendChild(profileAvatar);
+    }
 
-  // ✅ FIXED AVATAR SYSTEM
-  if (sender === "bot") {
-    avatar.src = "/static/" + CHARACTER_IMAGE;
-  } else {
-    avatar.src = "/static/user.png";
-  }
-
-  if (sender === "bot") {
-    div.appendChild(avatar);
-    div.appendChild(bubble);
-  } else {
-    div.appendChild(bubble);
-  }
-
-  chatBox.appendChild(div);
-  chatBox.scrollTop = chatBox.scrollHeight;
+    messageContainer.appendChild(textBubble);
+    chatBox.appendChild(messageContainer);
+    scrollToBottom();
 }
 
-// ---------------- FIRST MESSAGE ---------------- //
+function toggleTypingState(show) {
+    isWaitingForBot = show;
+    if (show) {
+        typingIndicator.style.display = "flex";
+        msgInput.setAttribute("disabled", "true");
+        msgInput.placeholder = `${CHARACTER} is thinking...`;
+        scrollToBottom();
+    } else {
+        typingIndicator.style.display = "none";
+        msgInput.removeAttribute("disabled");
+        msgInput.placeholder = "Type a message...";
+        msgInput.focus();
+    }
+}
+
 async function loadFirstMessage() {
-
-  typing.style.display = "block";
-
-  const res = await fetch("/first_message", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({character: CHARACTER})
-  });
-
-  const data = await res.json();
-
-  typing.style.display = "none";
-  addMessage(data.reply, "bot");
+    toggleTypingState(true);
+    try {
+        const response = await fetch("/first_message", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ character: CHARACTER })
+        });
+        const data = await response.json();
+        toggleTypingState(false);
+        addMessage(data.reply, "bot");
+    } catch (err) {
+        toggleTypingState(false);
+        addMessage("Connection stalled. Let's restart our talk...", "bot");
+    }
 }
 
-// ---------------- SEND MESSAGE ---------------- //
 async function sendMsg() {
-  const input = document.getElementById("msg");
-  const text = input.value.trim();
+    if (isWaitingForBot) return;
+    
+    const currentMessageText = msgInput.value.trim();
+    if (!currentMessageText) return;
 
-  if (!text) return;
+    addMessage(currentMessageText, "me");
+    msgInput.value = "";
+    toggleTypingState(true);
 
-  addMessage(text, "me");
-  input.value = "";
-
-  typing.style.display = "block";
-
-  const res = await fetch("/chat_api", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      message: text,
-      character: CHARACTER
-    })
-  });
-
-  const data = await res.json();
-
-  typing.style.display = "none";
-  addMessage(data.reply, "bot");
+    try {
+        const response = await fetch("/chat_api", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                message: currentMessageText,
+                character: CHARACTER
+            })
+        });
+        const data = await response.json();
+        toggleTypingState(false);
+        addMessage(data.reply, "bot");
+    } catch (error) {
+        toggleTypingState(false);
+        addMessage("*Frowns slightly, looking confused.* I lost our connection chain for a second. Can you resend that?", "bot");
+    }
 }
 
-// ENTER KEY
-document.getElementById("msg").addEventListener("keypress", e => {
-  if (e.key === "Enter") sendMsg();
+msgInput.addEventListener("keypress", event => {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        sendMsg();
+    }
 });
 
-// AUTO START
 window.onload = loadFirstMessage;
