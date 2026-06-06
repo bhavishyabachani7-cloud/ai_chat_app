@@ -21,7 +21,7 @@ last_msg_time = {}
 user_modes = {}
 user_gender = {}
 
-def call_groq_api(messages, temperature=0.9, max_tokens=250):
+def call_groq_api(messages, temperature=0.9, max_tokens=120):
     if not GROQ_API_KEY:
         print("🚨 CRITICAL ERROR: GROQ_API_KEY is missing in your environment configuration!")
         return None
@@ -73,6 +73,16 @@ def set_gender():
         return jsonify({"ok": True})
     return jsonify({"ok": False, "error": "Invalid profile token"})
 
+# Route to allow clearing chat history natively
+@app.route("/clear_chat", methods=["POST"])
+def clear_chat():
+    user = session.get("user")
+    char = request.json.get("character")
+    if user and char and user in chat_memory and char in chat_memory[user]:
+        chat_memory[user][char]["chat"] = []
+        return jsonify({"ok": True, "message": "Memory wrap reset successfully."})
+    return jsonify({"ok": False, "error": "Unable to wipe historical state."})
+
 # Mandatory Legal Compliance Routes for Ad Network Crawlers
 @app.route("/privacy-policy")
 def privacy_policy():
@@ -98,6 +108,7 @@ def generate_ai(user, msg, char):
         return "Slow down... savor the moment. 😏"
     last_msg_time[user] = time.time()
 
+    # Dynamic username extraction
     if "my name is" in msg.lower():
         extracted_name = msg.lower().split("my name is")[-1].strip(" .?!*")
         user_data["name"] = extracted_name.capitalize()
@@ -120,6 +131,10 @@ def generate_ai(user, msg, char):
         convo.append({"role": "assistant", "content": base_opener})
         return base_opener
 
+    # Append current incoming text to context stack immediately
+    if msg != "start":
+        convo.append({"role": "user", "content": msg})
+
     obsession = min(len(convo) // 3, 10)
 
     # 🚀 RE-ENGINEERED HYPER-REALISTIC CONVERSATION ENGINE SYSTEM INSTRUCTION
@@ -137,17 +152,18 @@ CRITICAL LAWS FOR GENUINE HUMAN TEXTING INTERACTION (STOP ACTING LIKE A BOT):
 """
 
     api_payload = [{"role": "system", "content": system_instruction}]
-    # Feeds the last 16 messages for snappy, quick contextual memory recall instead of dragging dead logs
-    api_payload += convo[-16:]  
-    api_payload.append({"role": "user", "content": msg})
+    
+    # ⚡ MEMORY WRAP ENGINE: Slices conversational history payload down to the last 8 turns.
+    # This keeps token size consistent, avoiding exponential accumulation and rate limits.
+    api_payload += convo[-8:]  
 
-    # Lowered tokens constraint for faster transmission execution
-    reply = call_groq_api(api_payload, temperature=0.85, max_tokens=150)
+    # Execution phase across the network pipeline
+    reply = call_groq_api(api_payload, temperature=0.85, max_tokens=120)
     
     if not reply:
-        reply = "*shrugs* Text stuck for a second. What were you saying? Tell me again..."
+        # Fallback dialog safely excludes mutating historical lists
+        return "*shrugs* Text stuck for a second. What were you saying? Tell me again..."
 
-    convo.append({"role": "user", "content": msg})
     convo.append({"role": "assistant", "content": reply})
     return reply
 
