@@ -9,9 +9,9 @@ app = Flask(__name__)
 # Clean fallback secret key optimized for a free public platform deployment
 app.secret_key = os.getenv("SECRET_KEY", "nexus_matrix_free_secure_gate_2026")
 
-# ⚡ GROQ INFRASTRUCTURE LIVE ROUTING
-GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+# ⚡ DEEPINFRA ENGINE INFRASTRUCTURE LIVE ROUTING
+DEEPINFRA_API_URL = "https://api.deepinfra.com/v1/openai/chat/completions"
+DEEPINFRA_API_KEY = os.getenv("DEEPINFRA_API_KEY")
 
 with open("characters.json", encoding="utf-8") as f:
     characters = json.load(f)
@@ -21,18 +21,18 @@ last_msg_time = {}
 user_modes = {}
 user_gender = {}
 
-def call_groq_api(messages, temperature=0.9, max_tokens=120):
-    if not GROQ_API_KEY:
-        print("🚨 CRITICAL ERROR: GROQ_API_KEY is missing in your environment configuration!")
+def call_deepinfra_api(messages, temperature=0.85, max_tokens=120):
+    if not DEEPINFRA_API_KEY:
+        print("🚨 CRITICAL ERROR: DEEPINFRA_API_KEY is missing in your environment configuration!")
         return None
 
     headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Authorization": f"Bearer {DEEPINFRA_API_KEY}",
         "Content-Type": "application/json"
     }
 
     payload = {
-        "model": "llama-3.3-70b-versatile",  # Flagship Llama tier on Groq
+        "model": "meta-llama/Llama-3.3-70B-Instruct",  # Matches the flagship 70B capabilities seamlessly
         "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens,
@@ -40,17 +40,17 @@ def call_groq_api(messages, temperature=0.9, max_tokens=120):
     }
 
     try:
-        print(f"📡 Dispatching request to Groq Engine via Llama-3.3-70b...")
-        res = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=15)
+        print(f"📡 Routing request to DeepInfra Engine via Llama-3.3-70b...")
+        res = requests.post(DEEPINFRA_API_URL, headers=headers, json=payload, timeout=15)
         if res.status_code == 200:
             res_data = res.json()
             if 'choices' in res_data and len(res_data['choices']) > 0:
                 content = res_data['choices'][0].get('message', {}).get('content')
                 if content and len(content.strip()) > 0:
-                    print(f"✅ Success! Generated raw dialogue response.")
+                    print(f"✅ Success! DeepInfra generated raw dialogue.")
                     return content.strip()
         else:
-            print(f"⚠️ API Engine Node Error: {res.text}")
+            print(f"⚠️ DeepInfra Engine Error: {res.text}")
     except Exception as e:
         print(f"💥 Pipeline Thread Exception: {str(e)}")
     return None
@@ -154,14 +154,12 @@ CRITICAL LAWS FOR GENUINE HUMAN TEXTING INTERACTION (STOP ACTING LIKE A BOT):
     api_payload = [{"role": "system", "content": system_instruction}]
     
     # ⚡ MEMORY WRAP ENGINE: Slices conversational history payload down to the last 8 turns.
-    # This keeps token size consistent, avoiding exponential accumulation and rate limits.
     api_payload += convo[-8:]  
 
-    # Execution phase across the network pipeline
-    reply = call_groq_api(api_payload, temperature=0.85, max_tokens=120)
+    # Execution phase across the deepinfra network pipeline
+    reply = call_deepinfra_api(api_payload, temperature=0.85, max_tokens=120)
     
     if not reply:
-        # Fallback dialog safely excludes mutating historical lists
         return "*shrugs* Text stuck for a second. What were you saying? Tell me again..."
 
     convo.append({"role": "assistant", "content": reply})
