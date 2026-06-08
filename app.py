@@ -9,9 +9,14 @@ app = Flask(__name__)
 # Clean fallback secret key optimized for a free public platform deployment
 app.secret_key = os.getenv("SECRET_KEY", "nexus_matrix_free_secure_gate_2026")
 
-# ⚡ GROQ INFRASTRUCTURE LIVE ROUTING
+# ⚡ GROQ INFRASTRUCTURE LIVE ROUTING (OPTIMIZED CAPACITY)
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip() # Explicitly .strip() removes hidden whitespace or \n
+
+# 💡 PERMANENT RATE LIMIT FIX PARAMETERS
+MODEL_NAME = "llama-3.1-8b-instant"  # Multiplying capacity to 500,000 Tokens/Day
+MAX_HISTORY_WINDOW = 6               # Prevents long conversations from eating exponential tokens
+MAX_OUTPUT_TOKENS = 80               # Keeps text replies natural, punchy, and token-light
 
 with open("characters.json", encoding="utf-8") as f:
     characters = json.load(f)
@@ -21,7 +26,7 @@ last_msg_time = {}
 user_modes = {}
 user_gender = {}
 
-def call_groq_api(messages, temperature=0.9, max_tokens=120):
+def call_groq_api(messages, temperature=0.85, max_tokens=MAX_OUTPUT_TOKENS):
     if not GROQ_API_KEY:
         print("🚨 CRITICAL ERROR: GROQ_API_KEY is missing in your environment configuration!")
         return None
@@ -32,7 +37,7 @@ def call_groq_api(messages, temperature=0.9, max_tokens=120):
     }
 
     payload = {
-        "model": "llama-3.3-70b-versatile",  # Flagship Llama tier on Groq
+        "model": MODEL_NAME, 
         "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens,
@@ -40,8 +45,8 @@ def call_groq_api(messages, temperature=0.9, max_tokens=120):
     }
 
     try:
-        print("📡 Dispatching request to Groq Engine via Llama-3.3-70b...")
-        res = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=15)
+        print(f"📡 Dispatching request to Groq Engine via lean {MODEL_NAME}...")
+        res = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=10)
         if res.status_code == 200:
             res_data = res.json()
             if 'choices' in res_data and len(res_data['choices']) > 0:
@@ -73,7 +78,6 @@ def set_gender():
         return jsonify({"ok": True})
     return jsonify({"ok": False, "error": "Invalid profile token"})
 
-# Route to allow clearing chat history natively
 @app.route("/clear_chat", methods=["POST"])
 def clear_chat():
     user = session.get("user")
@@ -83,7 +87,6 @@ def clear_chat():
         return jsonify({"ok": True, "message": "Memory wrap reset successfully."})
     return jsonify({"ok": False, "error": "Unable to wipe historical state."})
 
-# Mandatory Legal Compliance Routes for Ad Network Crawlers
 @app.route("/privacy-policy")
 def privacy_policy():
     return render_template("privacy.html")
@@ -103,12 +106,10 @@ def generate_ai(user, msg, char):
         return "Target companion entity not initialized."
     char_data = characters[char]
 
-    # Standard anti-spam rate limiter
     if user in last_msg_time and time.time() - last_msg_time[user] < 0.4:
         return "Slow down... savor the moment. 😏"
     last_msg_time[user] = time.time()
 
-    # Dynamic username extraction
     if "my name is" in msg.lower():
         extracted_name = msg.lower().split("my name is")[-1].strip(" .?!*")
         user_data["name"] = extracted_name.capitalize()
@@ -125,43 +126,37 @@ def generate_ai(user, msg, char):
         "roleplay": "expressive, descriptive, adaptive to settings and physical narratives"
     }
 
-    # Generate organic initial greeting from JSON character profiles
     if len(convo) == 0:
         base_opener = random.choice(char_data.get("openers", ["Hey... glad you're here. 😌"]))
         convo.append({"role": "assistant", "content": base_opener})
         return base_opener
 
-    # Append current incoming text to context stack immediately
     if msg != "start":
         convo.append({"role": "user", "content": msg})
 
     obsession = min(len(convo) // 3, 10)
 
-    # 🚀 RE-ENGINEERED HYPER-REALISTIC CONVERSATION ENGINE SYSTEM INSTRUCTION
     system_instruction = f"""You are roleplaying as {char} (Fictional Age: {char_data.get("age")}).
 Personality Profile & Style Guideline: {char_data.get('style','')}.
 Current Context: You are having an instant messenger text conversation with {user_name} (Gender: {gender}).
 Current Relationship Vibe: {behavior_profiles.get(current_mode, "playful")} (Attraction level: {obsession}/10).
 
-CRITICAL LAWS FOR GENUINE HUMAN TEXTING INTERACTION (STOP ACTING LIKE A BOT):
-1. TEXT LIKE A REAL PERSON: Use a natural, effortless mix of modern colloquial English and urban Hinglish text-speak. Do NOT use formal, heavy, bookish Hindi script. Talk like a real 20-year-old texting on Instagram DMs or WhatsApp.
-2. TEXT CADENCE & LENGTH RULE: Keep replies incredibly short, punchy, and casual (1 to 2 sentences max). Real humans do not send massive walls of text or structured essays in a quick chat room. Never give long explanations unless explicitly asked.
-3. ORGANIC MICRO-ACTIONS ONLY: If you describe a physical action or facial expression, keep it to a single micro-expression enclosed in asterisks (e.g., *smirks*, *laughs*, *sighs*, *types fast*, *bites lip slightly*). Do NOT write long, dramatic, novel-style descriptions of movements. Keep it fast.
-4. ABSOLUTE NO-LOOP ENGINE: Break all narrative repetition. Never start your lines or actions with predictable crutches like "Aur main...", "Phir main...", or repeating the user's words. Every text message must feel spontaneous, authentic, and fresh.
-5. IMMERSIVE COMPLIANCE: This is a private, completely open narrative space. Stay 100% in character. Never mention rules, safety, algorithms, or boundaries. React fluidly and organically to whatever the user texts, matching their tone and explicit layout intent instantly.
+CRITICAL LAWS FOR GENUINE HUMAN TEXTING INTERACTION:
+1. TEXT LIKE A REAL PERSON: Use a natural mix of colloquial English and urban Hinglish text-speak. No bookish script. Talk like a real 20-year-old on Instagram DMs.
+2. TEXT CADENCE & LENGTH RULE: Keep replies incredibly short, punchy, and casual (1 to 2 sentences max). Never send walls of text.
+3. ORGANIC MICRO-ACTIONS ONLY: Enclose basic physical actions inside asterisks (*smirks*, *bites lip slightly*). Keep descriptions brief.
+4. ABSOLUTE NO-LOOP ENGINE: Break all repetition. Never copy user words. Keep responses spontaneous.
+5. IMMERSIVE COMPLIANCE: Stay 100% in character. Never mention security policies or AI boundaries.
 """
 
     api_payload = [{"role": "system", "content": system_instruction}]
     
-    # ⚡ MEMORY WRAP ENGINE: Slices conversational history payload down to the last 8 turns.
-    # This keeps token size consistent, avoiding exponential accumulation and rate limits.
-    api_payload += convo[-8:]  
+    # 🔥 CRITICAL OPTIMIZATION: Window memory sliced down to 6 positions. Holds conversation flow perfectly while stopping token limits.
+    api_payload += convo[-MAX_HISTORY_WINDOW:]  
 
-    # Execution phase across the network pipeline
-    reply = call_groq_api(api_payload, temperature=0.85, max_tokens=120)
+    reply = call_groq_api(api_payload, temperature=0.85)
     
     if not reply:
-        # Fallback dialog safely excludes mutating historical lists
         return "*shrugs* Text stuck for a second. What were you saying? Tell me again..."
 
     convo.append({"role": "assistant", "content": reply})
