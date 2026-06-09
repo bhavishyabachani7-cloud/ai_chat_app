@@ -226,16 +226,15 @@ def privacy_policy(): return render_template("privacy.html")
 def terms(): return render_template("terms.html")
 
 # ==========================================================================
-# ⚡ REVISED ROUTING SYSTEM (LANDING GATE ALIGNMENT)
+# ⚡ REVISED DYNAMIC ENGINE ROUTING MATRIX
 # ==========================================================================
 
 @app.route("/")
 def home():
-    """Serves the landing page gating mechanic cleanly"""
     if not session.get("user"):
         session["user"] = str(uuid.uuid4())
     
-    # If they have already completed onboarding, route them directly to feed
+    # Secure Verification Override
     if session.get("gender_set"):
         return redirect("/feed")
         
@@ -243,7 +242,6 @@ def home():
 
 @app.route("/feed")
 def feed():
-    """Serves the actual companion exploration hub"""
     if not session.get("user") or not session.get("gender_set"): 
         return redirect("/")
     return render_template("feed.html", characters=characters)
@@ -257,9 +255,8 @@ def chat(char):
 
 @app.route("/reset")
 def reset_session():
-    """Testing Route: Use this to clear session state so you can see your landing page again"""
     session.clear()
-    return 'Session successfully cleared! Go back to <a href="/">Home</a> to see your landing page.'
+    return 'Session completely flushed. Return to <a href="/">Homepage Gateway</a>.'
 
 if __name__ == "__main__":
     app.run(debug=True)
