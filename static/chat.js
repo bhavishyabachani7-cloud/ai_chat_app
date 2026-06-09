@@ -23,100 +23,103 @@ function formatRoleplayText(text) {
 }
 
 function scrollToBottom() {
-    setTimeout(() => {
-        chatBox.scrollTo({
-            top: chatBox.scrollHeight,
-            behavior: 'smooth'
-        });
-    }, 50);
+    chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-function addMessage(text, sender = "bot") {
+async function sendMsg(initialRun = false) {
+    if (isWaitingForBot) return;
+    
+    let currentMessageText = initialRun ? "start" : msgInput.value.trim();
+    if (!currentMessageText) return;
+
+    if (!initialRun) {
+        addClientMessage(currentMessageText);
+        msgInput.value = "";
+    }
+
+    // Activate loading states
+    isWaitingForBot = true;
+    typingIndicator.style.display = "flex";
+    msgInput.setAttribute("disabled", "true");
+    msgInput.placeholder = `${CHARACTER} is typing...`;
+    scrollToBottom();
+
+    // Create an empty bot bubble block to stream words into
     const messageContainer = document.createElement("div");
-    messageContainer.classList.add("message", sender, "fade-in-bubble");
+    messageContainer.classList.add("message", "bot");
+
+    const profileAvatar = document.createElement("img");
+    profileAvatar.classList.add("avatar");
+    profileAvatar.src = "/static/" + CHARACTER_IMAGE;
+    messageContainer.appendChild(profileAvatar);
 
     const textBubble = document.createElement("div");
     textBubble.classList.add("bubble");
-    textBubble.innerHTML = formatRoleplayText(text);
+    messageContainer.appendChild(textBubble);
+    chatBox.appendChild(messageContainer);
 
-    if (sender === "bot") {
-        const profileAvatar = document.createElement("img");
-        profileAvatar.classList.add("avatar");
-        profileAvatar.src = "/static/" + CHARACTER_IMAGE;
-        profileAvatar.onload = scrollToBottom;
-        messageContainer.appendChild(profileAvatar);
+    try {
+        const response = await fetch("/chat_stream", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ message: currentMessageText, character: CHARACTER })
+        });
+
+        typingIndicator.style.display = "none";
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let globalResponseText = "";
+
+        // ⚡ ASYNCHRONOUS TOKEN STREAM READER LOOP
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split("\n");
+            
+            for (const line of lines) {
+                if (line.startsWith("data: ")) {
+                    try {
+                        const parsed = JSON.parse(line.slice(6));
+                        if (parsed.token) {
+                            globalResponseText += parsed.token;
+                            textBubble.innerHTML = formatRoleplayText(globalResponseText);
+                            chatBox.scrollTop = chatBox.scrollHeight;
+                        }
+                    } catch (e) {}
+                }
+            }
+        }
+    } catch (error) {
+        typingIndicator.style.display = "none";
+        textBubble.innerHTML = "*sighs* Connection dropped out for a second. Can you try again?";
     }
 
+    isWaitingForBot = false;
+    msgInput.removeAttribute("disabled");
+    msgInput.placeholder = "Type an action or reply here...";
+    msgInput.focus();
+    scrollToBottom();
+}
+
+function addClientMessage(text) {
+    const messageContainer = document.createElement("div");
+    messageContainer.classList.add("message", "me");
+    const textBubble = document.createElement("div");
+    textBubble.classList.add("bubble");
+    textBubble.innerHTML = formatRoleplayText(text);
     messageContainer.appendChild(textBubble);
     chatBox.appendChild(messageContainer);
     scrollToBottom();
 }
 
-function toggleTypingState(show) {
-    isWaitingForBot = show;
-    if (show) {
-        typingIndicator.style.display = "flex";
-        msgInput.setAttribute("disabled", "true");
-        msgInput.placeholder = `${CHARACTER} is thinking...`;
-        scrollToBottom();
-    } else {
-        typingIndicator.style.display = "none";
-        msgInput.removeAttribute("disabled");
-        msgInput.placeholder = "Type a message...";
-        msgInput.focus();
-    }
-}
-
-async function loadFirstMessage() {
-    toggleTypingState(true);
-    try {
-        const response = await fetch("/first_message", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ character: CHARACTER })
-        });
-        const data = await response.json();
-        toggleTypingState(false);
-        addMessage(data.reply, "bot");
-    } catch (err) {
-        toggleTypingState(false);
-        addMessage("Connection stalled. Let's restart our talk...", "bot");
-    }
-}
-
-async function sendMsg() {
-    if (isWaitingForBot) return;
-    
-    const currentMessageText = msgInput.value.trim();
-    if (!currentMessageText) return;
-
-    addMessage(currentMessageText, "me");
-    msgInput.value = "";
-    toggleTypingState(true);
-
-    try {
-        const response = await fetch("/chat_api", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({
-                message: currentMessageText,
-                character: CHARACTER
-            })
-        });
-        const data = await response.json();
-        toggleTypingState(false);
-        addMessage(data.reply, "bot");
-    } catch (error) {
-        toggleTypingState(false);
-        addMessage("*Frowns slightly, looking confused.* I lost our connection chain for a second. Can you resend that?", "bot");
-    }
-}
-
 msgInput.addEventListener("keypress", event => {
     if (event.key === "Enter") {
         event.preventDefault();
-        sendMsg();
+        sendMsg(false);
     }
 });
 
-window.onload = loadFirstMessage;
+// Auto-trigger opening greetings instantly via streaming hook on entry
+window.onload = () => { sendMsg(true); };
