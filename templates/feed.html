@@ -33,23 +33,21 @@
         {% endfor %}
     </div>
 
-    <div class="ad-placement-wrapper" style="width:100%; max-width:1200px; margin: 30px auto; text-align:center; min-height:90px; clear:both; position:relative; z-index:999;">
+    <div id="nexus-ad-deck-feed" style="display: block !important; visibility: visible !important; width: 100%; max-width: 728px; min-height: 90px; margin: 40px auto; text-align: center; position: relative; z-index: 999999; clear: both;">
         <script src="https://pl29685963.effectivecpmnetwork.com/aa/67/39/aa6739f3ca5a3359a953f59691ef2bba.js"></script>
     </div>
 
     <script>
-        window.addEventListener("load", function () {
-            if (!localStorage.getItem("genderSelected")) {
-                window.location.href = "/";
-            }
-        });
+        // Restored persistent alignment check safely
+        if (!localStorage.getItem("genderSelected")) {
+            window.location.href = "/";
+        }
 
-        // FIX: Reconfigured search logic selector to target ONLY character item links, leaving advertisement script layers untouched
         document.getElementById("searchBox").addEventListener("input", function () {
             let query = this.value.toLowerCase();
             document.querySelectorAll(".character-card").forEach(card => {
                 let text = card.innerText.toLowerCase();
-                card.style.display = text.includes(query) ? "inline-block" : "none";
+                card.style.display = text.includes(query) ? "block" : "none";
             });
         });
     </script>
