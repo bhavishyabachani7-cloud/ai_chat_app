@@ -5,21 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nexus AI Hub</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    
     <script defer src="https://cloud.umami.is/script.js" data-website-id="b8485b12-8cfa-4e25-852d-c08c9b03defc"></script>
 </head>
 <body>
-
-    <div id="gender-screen" class="gender-screen" style="display:none;">
-        <div class="gender-box glass glow-glow">
-            <h2>Identify Context</h2>
-            <p style="color:#a1a1aa; font-size:14px; margin-bottom:24px;">Choose your gender to anchor character dialogue behaviors</p>
-            <div class="btn-group">
-                <button onclick="setGender('male')">👦 Male Context</button>
-                <button onclick="setGender('female')">👧 Female Context</button>
-            </div>
-        </div>
-    </div>
 
     <div class="feed-header">
         <h2>Explore Entities</h2>
@@ -46,36 +34,22 @@
     </div>
 
     <script>
+        // Soft fallback routing logic checks to make sure state stays persistent
         window.addEventListener("load", function () {
             if (!localStorage.getItem("genderSelected")) {
-                document.getElementById("gender-screen").style.display = "flex";
+                window.location.href = "/";
             }
         });
-
-        function setGender(gender) {
-            fetch("/set_gender", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ gender })
-            }).then(() => {
-                localStorage.setItem("genderSelected", "true");
-                document.getElementById("gender-screen").style.filter = "opacity(0)";
-                setTimeout(() => {
-                    document.getElementById("gender-screen").style.display = "none";
-                }, 300);
-            });
-        }
 
         document.getElementById("searchBox").addEventListener("input", function () {
             let query = this.value.toLowerCase();
             document.querySelectorAll(".card").forEach(card => {
                 let text = card.innerText.toLowerCase();
-                card.style.display = text.includes(query) ? "block" : "none";
+                card.style.display = text.includes(query) ? "flex" : "none";
             });
         });
     </script>
 
     <script src="https://pl29685963.effectivecpmnetwork.com/aa/67/39/aa6739f3ca5a3359a953f59691ef2bba.js"></script>
-
 </body>
 </html>
