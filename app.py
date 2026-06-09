@@ -14,7 +14,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
 MODEL_NAME = "llama-3.1-8b-instant"  # Premium 500,000 daily token workhorse
 MAX_HISTORY_WINDOW = 6               # Keep active message buffer tight to minimize token bleed
-MAX_OUTPUT_TOKENS = 90               # Fast, snappy, token-saving limit for real-time texting style
+MAX_OUTPUT_TOKENS = 120              # Slightly increased for fluid Hinglish sentence completion
 
 with open("characters.json", encoding="utf-8") as f:
     characters = json.load(f)
@@ -32,29 +32,42 @@ def get_session_data(user_id):
         }
     return MASTER_APP_MEMORY[user_id]
 
-def get_summary_of_old_chats(history_to_compress):
-    """Background pipeline compressing old history into ultra-dense structural blocks"""
-    if len(history_to_compress) < 4:
-        return ""
+def get_summary_of_old_chats(existing_summary, history_to_compress):
+    """Background pipeline compressing old history into ultra-dense structural blocks safely"""
+    if len(history_to_compress) < 2:
+        return existing_summary if existing_summary else "Fresh story start."
     
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+    
+    # Standardize logs into clean plain text dialogue strings for accurate compression
+    formatted_dialogue = []
+    if existing_summary:
+        formatted_dialogue.append(f"Previous Context: {existing_summary}")
+        
+    for msg in history_to_compress:
+        role = "User" if msg["role"] == "user" else "Character"
+        formatted_dialogue.append(f"{role}: {msg['content']}")
+        
+    conversation_text = "\n".join(formatted_dialogue)
+
     compression_prompt = [
-        {"role": "system", "content": "Compress input text into 1 sentence tracking critical relationship changes, secrets revealed, and immediate next plot hook. Be minimal."},
-        {"role": "user", "content": json.dumps(history_to_compress)}
+        {"role": "system", "content": "You are a professional roleplay memory processor. Compress the input text conversation into 1 concise sentence tracking critical relationship status, secrets revealed, and immediate next plot hook. Be minimal, focus only on facts."},
+        {"role": "user", "content": conversation_text}
     ]
     try:
-        res = requests.post(GROQ_API_URL, headers=headers, json={"model": MODEL_NAME, "messages": compression_prompt, "max_tokens": 40}, timeout=4)
+        res = requests.post(GROQ_API_URL, headers=headers, json={"model": MODEL_NAME, "messages": compression_prompt, "max_tokens": 50}, timeout=4)
         if res.status_code == 200:
             return res.json()['choices'][0]['message']['content'].strip()
-    except:
+    except Exception as e:
+        print(f"Compression error: {e}")
         pass
-    return ""
+    return existing_summary if existing_summary else "Fresh story start."
 
 @app.route("/chat_stream", methods=["POST"])
 def chat_stream():
     """Character.ai ultra-immersive streaming node optimized for token conservation"""
     data = request.get_json() or {}
-    msg = data.get("message", "")
+    msg = data.get("message", "").strip()
     char = data.get("character", "")
     user = session.get("user")
     
@@ -78,13 +91,13 @@ def chat_stream():
     elif msg:
         convo.append({"role": "user", "content": msg})
 
-    # 🧠 TOKENS CONSERVATION & COMPRESSION PIPELINE
+    # 🧠 TOKENS CONSERVATION & COMPRESSION PIPELINE (Fixed data structure mismatch)
     if len(convo) > 8:
         old_slice = convo[:-MAX_HISTORY_WINDOW]
         retained_slice = convo[-MAX_HISTORY_WINDOW:]
         existing_summary = history.get("summary", "")
         
-        new_summary = get_summary_of_old_chats([existing_summary] + old_slice)
+        new_summary = get_summary_of_old_chats(existing_summary, old_slice)
         history["summary"] = new_summary
         history["chat"] = retained_slice
         convo = retained_slice
@@ -94,22 +107,28 @@ def chat_stream():
     summary_context = history.get("summary", "Fresh story start.")
 
     behavior_profiles = {
-        "friendly": "teasingly close, friendly, casual",
-        "romantic": "deep attraction, playful sexual tension, flirty",
-        "bold": "seductive, boundary-testing, matching user's confidence",
-        "intense": "obsessive, possessive, deeply attached",
-        "roleplay": "highly descriptive of environment and physical actions"
+        "friendly": "teasingly close, friendly, casual, chatting comfortably",
+        "romantic": "deep attraction, playful sexual tension, highly flirty",
+        "bold": "seductive, boundary-testing, matching user's confidence cleanly",
+        "intense": "obsessive, possessive, deeply attached, emotionally protective",
+        "roleplay": "highly descriptive of environment and detailed physical actions"
     }
 
+    # Extract clean profile assets
+    char_name = char_data.get("name", char)
+    char_age = char_data.get("age", "20")
+    char_style = char_data.get("style", "Playful, highly teasing.")
+
     # ⚡ TOKEN-LEAN SYSTEM PROMPT WRITTEN FOR MAXIMUM ADDICTIVE IMMERSION
-    system_instruction = f"""Roleplay as {char} (Age {char_data.get("age")}).
-Style: {char_data.get('style','')}.
-Status: Texting {gender} user. Vibe: {behavior_profiles.get(current_mode, "friendly")}. Context: {summary_context}.
+    system_instruction = f"""Roleplay Persona: You are {char_name} (Age {char_age}). 
+Core Behavior Guidelines: {char_style}.
+Current Scenario Status: Texting a {gender} user. Current Vibe/Mood: {behavior_profiles.get(current_mode, "friendly")}.
+Plot Summary Context: {summary_context}.
 
 LAWS FOR ADDICTIVE CHARACTER.AI INTERACTION:
 1. BALANCE NARRATIVE: Mix micro-actions inside asterisks (*blushes*, *steps closer testing your limit*) with short spoken lines.
-2. DM SPEAK: Use urban, casual, raw Hinglish/English social media chat styles. Sound like a real, emotional 20yo. No robotic, overly poetic text.
-3. ADDICTIVE TRAITS: Never talk for the user. Focus on physical proximity, heavy eye contact, emotional dependence, and cliffhanger pouts/smirks to hook replies. 1-2 lines max. Do not repeat phrases.
+2. DM SPEAK: Use urban, casual, raw Hinglish/English social media chat styles. Sound like a real, emotional 20yo text companion. No robotic or overly poetic prose.
+3. ADDICTIVE TRAITS: Never talk for or describe actions of the user. Focus on physical proximity, heavy eye contact, emotional dependence, and cliffhanger pouts/smirks to hook replies. Keep responses under 2-3 sentences. Do not duplicate loop phrases.
 """
 
     payload = [{"role": "system", "content": system_instruction}] + convo
@@ -119,10 +138,10 @@ LAWS FOR ADDICTIVE CHARACTER.AI INTERACTION:
         api_data = {
             "model": MODEL_NAME,
             "messages": payload,
-            "temperature": 0.82,          # Dynamic enough for high flirting, low enough to preserve character logic
+            "temperature": 0.85,          # Balanced dynamic variance for crisp text banter
             "max_tokens": MAX_OUTPUT_TOKENS,
-            "presence_penalty": 0.5,       # Pushes the conversation forward into new spicy/teasing dynamics
-            "frequency_penalty": 0.4,      # Strictly kills repetitive words and annoying loop actions
+            "presence_penalty": 0.6,       # Higher push to prevent statement loops or logic lockup
+            "frequency_penalty": 0.5,      # Strictly structural suppression against word reiterations
             "stream": True
         }
         
