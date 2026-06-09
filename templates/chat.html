@@ -5,14 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nexus Chat Room</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    
     <script defer src="https://cloud.umami.is/script.js" data-website-id="b8485b12-8cfa-4e25-852d-c08c9b03defc"></script>
 </head>
 <body>
 
 <div class="chat-container">
 
-    <div class="chat-header glass">
+    <div class="chat-header">
         <div class="chat-header-left">
             <img src="{{ url_for('static', filename=characters[char].image) }}" alt="{{ char }}">
             <div class="chat-info">
@@ -38,7 +37,7 @@
     </div>
 
     <div class="chat-input-area">
-        <div class="chat-input-wrapper glass glow-glow">
+        <div class="chat-input-wrapper">
             <input id="msg" placeholder="Type an action or reply here..." autocomplete="off">
             <button onclick="sendMsg()">➤</button>
         </div>
@@ -53,6 +52,5 @@
 <script src="{{ url_for('static', filename='chat.js') }}"></script>
 
 <script src="https://pl29685963.effectivecpmnetwork.com/aa/67/39/aa6739f3ca5a3359a953f59691ef2bba.js"></script>
-
 </body>
 </html>
