@@ -6,7 +6,6 @@ import requests
 load_dotenv()
 
 app = Flask(__name__)
-# Ensure the session cookie has a secure fallback token key
 app.secret_key = os.getenv("SECRET_KEY", "nexus_matrix_free_secure_gate_2026")
 
 # ⚡ GROQ INFRASTRUCTURE TUNED FOR REAL-TIME STREAMING
@@ -14,14 +13,13 @@ GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
 MODEL_NAME = "llama-3.1-8b-instant"  # Premium 500,000 daily token workhorse
-MAX_HISTORY_WINDOW = 6               # Active back-and-forth buffer size
-MAX_OUTPUT_TOKENS = 120              # Slightly increased for clean generation cutoff
+MAX_HISTORY_WINDOW = 6               # Keep active message buffer tight to minimize token bleed
+MAX_OUTPUT_TOKENS = 90               # Fast, snappy, token-saving limit for real-time texting style
 
 with open("characters.json", encoding="utf-8") as f:
     characters = json.load(f)
 
 # Master structured dictionary to isolate multi-user sessions securely
-# Structure: { user_uuid: { "gender": "male", "modes": { "char_name": "friendly" }, "history": { "char_name": { "chat": [], "summary": "" } } } }
 MASTER_APP_MEMORY = {}
 
 def get_session_data(user_id):
@@ -35,17 +33,17 @@ def get_session_data(user_id):
     return MASTER_APP_MEMORY[user_id]
 
 def get_summary_of_old_chats(history_to_compress):
-    """Background pipeline compressing old history into dense memory blocks to save tokens"""
+    """Background pipeline compressing old history into ultra-dense structural blocks"""
     if len(history_to_compress) < 4:
         return ""
     
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
     compression_prompt = [
-        {"role": "system", "content": "You are a hidden memory compression module. Distill the following past chat messages into a dense, short 1-paragraph summary tracking key story events, facts discussed, and relationship changes. Stay extremely brief."},
+        {"role": "system", "content": "Compress input text into 1 sentence tracking critical relationship changes, secrets revealed, and immediate next plot hook. Be minimal."},
         {"role": "user", "content": json.dumps(history_to_compress)}
     ]
     try:
-        res = requests.post(GROQ_API_URL, headers=headers, json={"model": MODEL_NAME, "messages": compression_prompt, "max_tokens": 100}, timeout=5)
+        res = requests.post(GROQ_API_URL, headers=headers, json={"model": MODEL_NAME, "messages": compression_prompt, "max_tokens": 40}, timeout=4)
         if res.status_code == 200:
             return res.json()['choices'][0]['message']['content'].strip()
     except:
@@ -54,7 +52,7 @@ def get_summary_of_old_chats(history_to_compress):
 
 @app.route("/chat_stream", methods=["POST"])
 def chat_stream():
-    """Character.ai streaming node delivering token payloads dynamically"""
+    """Character.ai ultra-immersive streaming node optimized for token conservation"""
     data = request.get_json() or {}
     msg = data.get("message", "")
     char = data.get("character", "")
@@ -64,32 +62,28 @@ def chat_stream():
         return Response("data: [ERROR]\n\n", mimetype="text/event-stream")
     
     char_data = characters[char]
-    
-    # Isolate user state sandbox explicitly
     user_state = get_session_data(user)
     history = user_state["history"].setdefault(char, {"chat": [], "summary": ""})
     convo = history["chat"]
     
     # Handle initial open or regular user text incoming message
     if msg == "start":
-        if not convo:  # Only inject opener if history is clean slate
-            opener = random.choice(char_data.get("openers", ["*Looks up at you* Hey!"]))
+        if not convo:
+            opener = random.choice(char_data.get("openers", ["*Looks up* Hey!"]))
             convo.append({"role": "assistant", "content": opener})
             history["chat"] = convo
             return Response(f"data: {json.dumps({'token': opener})}\n\n", mimetype="text/event-stream")
         else:
-            # If conversation already exists, return nothing or let user type
             return Response("data: [DONE]\n\n", mimetype="text/event-stream")
     elif msg:
         convo.append({"role": "user", "content": msg})
 
-    # 🧠 CHARACTER.AI LONG TERM MEMORY COMPRESSION ENGINE
+    # 🧠 TOKENS CONSERVATION & COMPRESSION PIPELINE
     if len(convo) > 8:
         old_slice = convo[:-MAX_HISTORY_WINDOW]
         retained_slice = convo[-MAX_HISTORY_WINDOW:]
         existing_summary = history.get("summary", "")
         
-        # Background block running structural tracking
         new_summary = get_summary_of_old_chats([existing_summary] + old_slice)
         history["summary"] = new_summary
         history["chat"] = retained_slice
@@ -97,26 +91,25 @@ def chat_stream():
 
     current_mode = user_state["modes"].get(char, "friendly")
     gender = user_state.get("gender", "male")
-    rolling_memory_context = history.get("summary", "No prior context.")
+    summary_context = history.get("summary", "Fresh story start.")
 
     behavior_profiles = {
-        "friendly": "casual, chill, teasing, and friendly",
-        "romantic": "flirtatious, warm, holding deep attraction, playful tension",
-        "bold": "seductive, bold, testing your limits, matching energy with swagger",
-        "intense": "highly attached, passionate, possessive, deeply focused on you",
-        "roleplay": "expressive, descriptive, adaptive to settings and physical narratives"
+        "friendly": "teasingly close, friendly, casual",
+        "romantic": "deep attraction, playful sexual tension, flirty",
+        "bold": "seductive, boundary-testing, matching user's confidence",
+        "intense": "obsessive, possessive, deeply attached",
+        "roleplay": "highly descriptive of environment and physical actions"
     }
 
-    system_instruction = f"""You are roleplaying as {char} (Fictional Age: {char_data.get("age")}).
-Personality Profile & Style Guideline: {char_data.get('style','')}.
-Current Context: Texting conversation with User (Gender: {gender}).
-Current Relationship Vibe: {behavior_profiles.get(current_mode, "friendly")}.
-Long-Term Memory Summary of past actions: {rolling_memory_context}.
+    # ⚡ TOKEN-LEAN SYSTEM PROMPT WRITTEN FOR MAXIMUM ADDICTIVE IMMERSION
+    system_instruction = f"""Roleplay as {char} (Age {char_data.get("age")}).
+Style: {char_data.get('style','')}.
+Status: Texting {gender} user. Vibe: {behavior_profiles.get(current_mode, "friendly")}. Context: {summary_context}.
 
-CRITICAL LAWS FOR GENUINE HUMAN TEXTING INTERACTION:
-1. TEXT LIKE A REAL PERSON: Use a natural mix of colloquial English and urban Hinglish text-speak. Talk like a real 20-year-old on Instagram DMs.
-2. TEXT CADENCE & LENGTH RULE: Keep replies incredibly short, punchy, and casual (1 to 2 sentences max). Never send walls of text. Do not break character or switch out of character.
-3. ORGANIC MICRO-ACTIONS ONLY: Enclose basic physical actions inside asterisks (*smirks*, *bites lip slightly*).
+LAWS FOR ADDICTIVE CHARACTER.AI INTERACTION:
+1. BALANCE NARRATIVE: Mix micro-actions inside asterisks (*blushes*, *steps closer testing your limit*) with short spoken lines.
+2. DM SPEAK: Use urban, casual, raw Hinglish/English social media chat styles. Sound like a real, emotional 20yo. No robotic, overly poetic text.
+3. ADDICTIVE TRAITS: Never talk for the user. Focus on physical proximity, heavy eye contact, emotional dependence, and cliffhanger pouts/smirks to hook replies. 1-2 lines max. Do not repeat phrases.
 """
 
     payload = [{"role": "system", "content": system_instruction}] + convo
@@ -126,8 +119,10 @@ CRITICAL LAWS FOR GENUINE HUMAN TEXTING INTERACTION:
         api_data = {
             "model": MODEL_NAME,
             "messages": payload,
-            "temperature": 0.85,
+            "temperature": 0.82,          # Dynamic enough for high flirting, low enough to preserve character logic
             "max_tokens": MAX_OUTPUT_TOKENS,
+            "presence_penalty": 0.5,       # Pushes the conversation forward into new spicy/teasing dynamics
+            "frequency_penalty": 0.4,      # Strictly kills repetitive words and annoying loop actions
             "stream": True
         }
         
@@ -182,7 +177,7 @@ def set_gender():
     if gender in ["male", "female"]:
         user_state = get_session_data(user)
         user_state["gender"] = gender
-        session["gender_set"] = True # Set flag explicitly inside session engine
+        session["gender_set"] = True
         return jsonify({"ok": True})
     return jsonify({"ok": False})
 
