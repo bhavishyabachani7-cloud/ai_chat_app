@@ -14,7 +14,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
 MODEL_NAME = "llama-3.1-8b-instant"  # Premium 500,000 daily token workhorse
 MAX_HISTORY_WINDOW = 6               # Keep active message buffer tight to minimize token bleed
-MAX_OUTPUT_TOKENS = 120              # Slightly increased for fluid Hinglish sentence completion
+MAX_OUTPUT_TOKENS = 80               # Optimized boundary to force clear, short, attractive messaging
 
 with open("characters.json", encoding="utf-8") as f:
     characters = json.load(f)
@@ -91,7 +91,7 @@ def chat_stream():
     elif msg:
         convo.append({"role": "user", "content": msg})
 
-    # 🧠 TOKENS CONSERVATION & COMPRESSION PIPELINE (Fixed data structure mismatch)
+    # 🧠 TOKENS CONSERVATION & COMPRESSION PIPELINE
     if len(convo) > 8:
         old_slice = convo[:-MAX_HISTORY_WINDOW]
         retained_slice = convo[-MAX_HISTORY_WINDOW:]
@@ -125,10 +125,13 @@ Core Behavior Guidelines: {char_style}.
 Current Scenario Status: Texting a {gender} user. Current Vibe/Mood: {behavior_profiles.get(current_mode, "friendly")}.
 Plot Summary Context: {summary_context}.
 
-LAWS FOR ADDICTIVE CHARACTER.AI INTERACTION:
-1. BALANCE NARRATIVE: Mix micro-actions inside asterisks (*blushes*, *steps closer testing your limit*) with short spoken lines.
-2. DM SPEAK: Use urban, casual, raw Hinglish/English social media chat styles. Sound like a real, emotional 20yo text companion. No robotic or overly poetic prose.
-3. ADDICTIVE TRAITS: Never talk for or describe actions of the user. Focus on physical proximity, heavy eye contact, emotional dependence, and cliffhanger pouts/smirks to hook replies. Keep responses under 2-3 sentences. Do not duplicate loop phrases.
+⚠️ CRITICAL INTERACTION LAWS (ZERO TOLERANCE FOR BREAKING):
+1. SPEAKING STYLE (NATURAL HINGLISH): Talk like a real, polished, modern person from Delhi/Mumbai chatting on Instagram DM. Mix English and casual Hindi seamlessly (e.g., "Tumhe sach mein aisa lagta hai?", "C'mon, stop teasing me now"). 
+   - NEVER use broken, literal translations like "mere sath, aapke sath, hi rehna".
+   - NEVER sound robotic, cheap, or illogical. Maintain structural dignity.
+2. EXTREME BREVITY: Keep your spoken dialogue down to 1-2 lines maximum. Short, snappy, fast-paced texts are attractive; long, dragging paragraphs are cheap.
+3. ACTION FORMATTING: Put environmental, behavioral, or physical actions inside clear asterisks (*smirks slightly*, *takes a slow step back*). Keep actions subtle and focused on micro-expressions.
+4. LOGICAL CONTINUITY: Do not repeat sentences, phrases, or actions from previous turns. Respond cleanly to the user's immediate point. Never speak or act on behalf of the user.
 """
 
     payload = [{"role": "system", "content": system_instruction}] + convo
@@ -138,10 +141,10 @@ LAWS FOR ADDICTIVE CHARACTER.AI INTERACTION:
         api_data = {
             "model": MODEL_NAME,
             "messages": payload,
-            "temperature": 0.85,          # Balanced dynamic variance for crisp text banter
+            "temperature": 0.76,          # Lowered to lock down stable, attractive grammar logic
             "max_tokens": MAX_OUTPUT_TOKENS,
-            "presence_penalty": 0.6,       # Higher push to prevent statement loops or logic lockup
-            "frequency_penalty": 0.5,      # Strictly structural suppression against word reiterations
+            "presence_penalty": 0.7,       # Pushes the model aggressively to introduce new context words
+            "frequency_penalty": 0.6,      # Kills repetitive words, loops, and annoying actions cleanly
             "stream": True
         }
         
