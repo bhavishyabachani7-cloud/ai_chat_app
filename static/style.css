@@ -572,14 +572,6 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.bubble em {
-    color: #c7d2fe;
-    font-family: 'Playfair Display', serif;
-    font-style: italic;
-    font-weight: 400;
-    letter-spacing: 0.3px;
-}
-
 /* ==========================================================================
    5. DECK COMPONENT DOCKING INPUT
    ========================================================================== */
@@ -709,4 +701,26 @@ body {
     .chat-header { padding: 16px; }
     .landing-card { padding: 35px 24px; }
     .legal-wrapper { margin: 30px 15px; padding: 25px; }
+}
+
+/* ==========================================================================
+   7. CHARACTER.AI SMOOTH FLOW STREAM ANIMATIONS
+   ========================================================================== */
+.bubble {
+    transition: all 0.1s ease-out;
+}
+
+/* Elegant High-Fashion Styling for Asterisk Narratives (*actions*) */
+.bubble em.roleplay-action {
+    color: #c7d2fe !important;
+    font-family: 'Playfair Display', serif;
+    font-style: italic !important;
+    font-weight: 400;
+    letter-spacing: 0.3px;
+    animation: textFadeIn 0.22s ease-in-out forwards;
+}
+
+@keyframes textFadeIn {
+    from { opacity: 0; transform: translateY(2px); filter: blur(1px); }
+    to { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
