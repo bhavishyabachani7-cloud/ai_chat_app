@@ -6,6 +6,7 @@ import requests
 load_dotenv()
 
 app = Flask(__name__)
+# Ensure the session cookie has a secure fallback token key
 app.secret_key = os.getenv("SECRET_KEY", "nexus_matrix_free_secure_gate_2026")
 
 # ⚡ GROQ INFRASTRUCTURE TUNED FOR REAL-TIME STREAMING
@@ -14,16 +15,26 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
 MODEL_NAME = "llama-3.1-8b-instant"  # Premium 500,000 daily token workhorse
 MAX_HISTORY_WINDOW = 6               # Active back-and-forth buffer size
-MAX_OUTPUT_TOKENS = 80               # Fast, punchy response limits
+MAX_OUTPUT_TOKENS = 120              # Slightly increased for clean generation cutoff
 
 with open("characters.json", encoding="utf-8") as f:
     characters = json.load(f)
 
-chat_memory = {}
-user_modes = {}
-user_gender = {}
+# Master structured dictionary to isolate multi-user sessions securely
+# Structure: { user_uuid: { "gender": "male", "modes": { "char_name": "friendly" }, "history": { "char_name": { "chat": [], "summary": "" } } } }
+MASTER_APP_MEMORY = {}
 
-def get_summary_of_old_chats(style_guide, history_to_compress):
+def get_session_data(user_id):
+    """Ensures a user has an isolated partition inside master state"""
+    if user_id not in MASTER_APP_MEMORY:
+        MASTER_APP_MEMORY[user_id] = {
+            "gender": "male",
+            "modes": {},
+            "history": {}
+        }
+    return MASTER_APP_MEMORY[user_id]
+
+def get_summary_of_old_chats(history_to_compress):
     """Background pipeline compressing old history into dense memory blocks to save tokens"""
     if len(history_to_compress) < 4:
         return ""
@@ -53,10 +64,23 @@ def chat_stream():
         return Response("data: [ERROR]\n\n", mimetype="text/event-stream")
     
     char_data = characters[char]
-    history = chat_memory.setdefault(user, {}).setdefault(char, {})
-    convo = history.setdefault("chat", [])
     
-    if msg != "start" and msg:
+    # Isolate user state sandbox explicitly
+    user_state = get_session_data(user)
+    history = user_state["history"].setdefault(char, {"chat": [], "summary": ""})
+    convo = history["chat"]
+    
+    # Handle initial open or regular user text incoming message
+    if msg == "start":
+        if not convo:  # Only inject opener if history is clean slate
+            opener = random.choice(char_data.get("openers", ["*Looks up at you* Hey!"]))
+            convo.append({"role": "assistant", "content": opener})
+            history["chat"] = convo
+            return Response(f"data: {json.dumps({'token': opener})}\n\n", mimetype="text/event-stream")
+        else:
+            # If conversation already exists, return nothing or let user type
+            return Response("data: [DONE]\n\n", mimetype="text/event-stream")
+    elif msg:
         convo.append({"role": "user", "content": msg})
 
     # 🧠 CHARACTER.AI LONG TERM MEMORY COMPRESSION ENGINE
@@ -65,14 +89,14 @@ def chat_stream():
         retained_slice = convo[-MAX_HISTORY_WINDOW:]
         existing_summary = history.get("summary", "")
         
-        new_summary = get_summary_of_old_chats(char_data.get("style"), [existing_summary] + old_slice)
+        # Background block running structural tracking
+        new_summary = get_summary_of_old_chats([existing_summary] + old_slice)
         history["summary"] = new_summary
         history["chat"] = retained_slice
         convo = retained_slice
 
-    user_name = chat_memory.setdefault(user, {}).get("name", "User")
-    current_mode = user_modes.get(user, "friendly")
-    gender = user_gender.get(user, "male")
+    current_mode = user_state["modes"].get(char, "friendly")
+    gender = user_state.get("gender", "male")
     rolling_memory_context = history.get("summary", "No prior context.")
 
     behavior_profiles = {
@@ -85,13 +109,13 @@ def chat_stream():
 
     system_instruction = f"""You are roleplaying as {char} (Fictional Age: {char_data.get("age")}).
 Personality Profile & Style Guideline: {char_data.get('style','')}.
-Current Context: Texting conversation with {user_name} (Gender: {gender}).
-Current Relationship Vibe: {behavior_profiles.get(current_mode, "playful")}.
+Current Context: Texting conversation with User (Gender: {gender}).
+Current Relationship Vibe: {behavior_profiles.get(current_mode, "friendly")}.
 Long-Term Memory Summary of past actions: {rolling_memory_context}.
 
 CRITICAL LAWS FOR GENUINE HUMAN TEXTING INTERACTION:
 1. TEXT LIKE A REAL PERSON: Use a natural mix of colloquial English and urban Hinglish text-speak. Talk like a real 20-year-old on Instagram DMs.
-2. TEXT CADENCE & LENGTH RULE: Keep replies incredibly short, punchy, and casual (1 to 2 sentences max). Never send walls of text.
+2. TEXT CADENCE & LENGTH RULE: Keep replies incredibly short, punchy, and casual (1 to 2 sentences max). Never send walls of text. Do not break character or switch out of character.
 3. ORGANIC MICRO-ACTIONS ONLY: Enclose basic physical actions inside asterisks (*smirks*, *bites lip slightly*).
 """
 
@@ -104,7 +128,7 @@ CRITICAL LAWS FOR GENUINE HUMAN TEXTING INTERACTION:
             "messages": payload,
             "temperature": 0.85,
             "max_tokens": MAX_OUTPUT_TOKENS,
-            "stream": True  # ⚡ Tells Groq to push data word-by-word
+            "stream": True
         }
         
         try:
@@ -126,8 +150,9 @@ CRITICAL LAWS FOR GENUINE HUMAN TEXTING INTERACTION:
                         except:
                             pass
             
-            convo.append({"role": "assistant", "content": full_reply})
-            history["chat"] = convo
+            if full_reply.strip():
+                convo.append({"role": "assistant", "content": full_reply})
+                history["chat"] = convo
         except Exception as e:
             yield f"data: {json.dumps({'token': '...lost connection for a second. Tell me again?'})}\n\n"
 
@@ -137,16 +162,27 @@ CRITICAL LAWS FOR GENUINE HUMAN TEXTING INTERACTION:
 def set_mode():
     user = session.get("user")
     if not user: return jsonify({"ok": False})
-    user_modes[user] = request.json.get("mode", "friendly")
-    return jsonify({"ok": True, "current_mode": user_modes[user]})
+    
+    data = request.json or {}
+    mode = data.get("mode", "friendly")
+    char = data.get("character")
+    
+    if not char: return jsonify({"ok": False, "error": "Missing character mapping"})
+    
+    user_state = get_session_data(user)
+    user_state["modes"][char] = mode
+    return jsonify({"ok": True, "current_mode": mode})
 
 @app.route("/set_gender", methods=["POST"])
 def set_gender():
     user = session.get("user")
     if not user: return jsonify({"ok": False})
+    
     gender = request.json.get("gender")
     if gender in ["male", "female"]:
-        user_gender[user] = gender
+        user_state = get_session_data(user)
+        user_state["gender"] = gender
+        session["gender_set"] = True # Set flag explicitly inside session engine
         return jsonify({"ok": True})
     return jsonify({"ok": False})
 
@@ -154,10 +190,11 @@ def set_gender():
 def clear_chat():
     user = session.get("user")
     char = request.json.get("character")
-    if user and char and user in chat_memory and char in chat_memory[user]:
-        chat_memory[user][char]["chat"] = []
-        chat_memory[user][char]["summary"] = ""
-        return jsonify({"ok": True})
+    if user:
+        user_state = get_session_data(user)
+        if char in user_state["history"]:
+            user_state["history"][char] = {"chat": [], "summary": ""}
+            return jsonify({"ok": True})
     return jsonify({"ok": False})
 
 @app.route("/privacy-policy")
@@ -170,16 +207,16 @@ def terms(): return render_template("terms.html")
 def home():
     if not session.get("user"):
         session["user"] = str(uuid.uuid4())
-    return redirect("/feed") if session.get("user") in user_gender else render_template("landing.html")
+    return redirect("/feed") if session.get("gender_set") else render_template("landing.html")
 
 @app.route("/feed")
 def feed():
-    if not session.get("user") or session.get("user") not in user_gender: return redirect("/")
+    if not session.get("user") or not session.get("gender_set"): return redirect("/")
     return render_template("feed.html", characters=characters)
 
 @app.route("/chat/<char>")
 def chat(char):
-    if not session.get("user") or session.get("user") not in user_gender: return redirect("/")
+    if not session.get("user") or not session.get("gender_set"): return redirect("/")
     if char not in characters: return redirect("/feed")
     return render_template("chat.html", char=char, characters=characters)
 
