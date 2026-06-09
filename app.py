@@ -14,7 +14,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
 MODEL_NAME = "llama-3.1-8b-instant"  # Premium 500,000 daily token workhorse
 MAX_HISTORY_WINDOW = 6               # Keep active message buffer tight to minimize token bleed
-MAX_OUTPUT_TOKENS = 80               # Optimized boundary to force clear, short, attractive messaging
+MAX_OUTPUT_TOKENS = 120              # Slightly extended to prevent cutoff in detailed action sentences
 
 with open("characters.json", encoding="utf-8") as f:
     characters = json.load(f)
@@ -34,7 +34,7 @@ def get_session_data(user_id):
 
 def get_summary_of_old_chats(existing_summary, history_to_compress):
     """Background pipeline compressing old history into ultra-dense structural blocks safely"""
-    if len(history_to_compress) < 2:
+    if len(history_to_compress) < 2 or not GROQ_API_KEY:
         return existing_summary if existing_summary else "Fresh story start."
     
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
@@ -60,7 +60,6 @@ def get_summary_of_old_chats(existing_summary, history_to_compress):
             return res.json()['choices'][0]['message']['content'].strip()
     except Exception as e:
         print(f"Compression error: {e}")
-        pass
     return existing_summary if existing_summary else "Fresh story start."
 
 @app.route("/chat_stream", methods=["POST"])
@@ -85,7 +84,7 @@ def chat_stream():
             opener = random.choice(char_data.get("openers", ["*Looks up* Hey!"]))
             convo.append({"role": "assistant", "content": opener})
             history["chat"] = convo
-            return Response(f"data: {json.dumps({'token': opener})}\n\n", mimetype="text/event-stream")
+            return Response(f"data: {json.dumps({'token': opener})}\n\ndata: [DONE]\n\n", mimetype="text/event-stream")
         else:
             return Response("data: [DONE]\n\n", mimetype="text/event-stream")
     elif msg:
@@ -131,7 +130,7 @@ Plot Summary Context: {summary_context}.
    - NEVER sound robotic, cheap, or illogical. Maintain structural dignity.
 2. EXTREME BREVITY: Keep your spoken dialogue down to 1-2 lines maximum. Short, snappy, fast-paced texts are attractive; long, dragging paragraphs are cheap.
 3. ACTION FORMATTING: Put environmental, behavioral, or physical actions inside clear asterisks (*smirks slightly*, *takes a slow step back*). Keep actions subtle and focused on micro-expressions.
-4. LOGICAL CONTINUITY: Do not repeat sentences, phrases, or actions from previous turns. Respond cleanly to the user's immediate point. Never speak or act on behalf of the user.
+4. LOGICAL CONTINUITY: Do not repeat sentences, phrases, or actions from previous turns. Respond cleanly to the user's immediate point. Never speak or act on behalf of the user. If the user replies with minimal text like "kuch nahi" or "nhi", break the loop by initiating a new narrative hook or shifting your physical movement to push the story forward.
 """
 
     payload = [{"role": "system", "content": system_instruction}] + convo
@@ -141,10 +140,10 @@ Plot Summary Context: {summary_context}.
         api_data = {
             "model": MODEL_NAME,
             "messages": payload,
-            "temperature": 0.76,          # Lowered to lock down stable, attractive grammar logic
+            "temperature": 0.82,          # Optimized for fluent Hinglish dialogue adjustments
             "max_tokens": MAX_OUTPUT_TOKENS,
-            "presence_penalty": 0.7,       # Pushes the model aggressively to introduce new context words
-            "frequency_penalty": 0.6,      # Kills repetitive words, loops, and annoying actions cleanly
+            "presence_penalty": 0.75,      # Pushes model aggressively to introduce fresh contextual paths
+            "frequency_penalty": 0.65,     # Aggressively penalizes repeating narrative structures or trailing words
             "stream": True
         }
         
@@ -167,11 +166,17 @@ Plot Summary Context: {summary_context}.
                         except:
                             pass
             
+            # Safe back-end save state inside generator context boundary
             if full_reply.strip():
-                convo.append({"role": "assistant", "content": full_reply})
-                history["chat"] = convo
+                convo.append({"role": "assistant", "content": full_reply.strip()})
+                MASTER_APP_MEMORY[user]["history"][char]["chat"] = convo
+                
+            yield "data: [DONE]\n\n"
+            
         except Exception as e:
+            print(f"Streaming trace exception: {e}")
             yield f"data: {json.dumps({'token': '...lost connection for a second. Tell me again?'})}\n\n"
+            yield "data: [DONE]\n\n"
 
     return Response(generate_tokens(), mimetype="text/event-stream")
 
