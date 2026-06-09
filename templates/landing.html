@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nexus Luxury AI — Enter the Space</title>
     <link rel="stylesheet" href="/static/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
     <script defer src="https://cloud.umami.is/script.js" data-website-id="b8485b12-8cfa-4e25-852d-c08c9b03defc"></script>
 </head>
 <body class="landing-body">
@@ -68,6 +67,7 @@
                 });
                 const data = await response.json();
                 if(data.ok) {
+                    localStorage.setItem("genderSelected", "true");
                     window.location.href = "/feed"; 
                 }
             } catch(err) {
