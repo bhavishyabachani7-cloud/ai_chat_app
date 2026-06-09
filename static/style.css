@@ -1,7 +1,7 @@
 /* ==========================================================================
    1. PREMIUM GLOBAL DESIGN SYSTEM & TOKENS
    ========================================================================== */
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght=0,600;1,400&display=swap');
 
 * {
     margin: 0;
@@ -15,6 +15,9 @@ body {
     color: #f4f4f5;
     overflow-x: hidden;
     min-height: 100vh;
+    min-height: 100dvh;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
 }
 
 /* Glassmorphism Presets */
@@ -38,9 +41,11 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
+    min-height: 100dvh;
     margin: 0;
     overflow: hidden;
     position: relative;
+    padding: 20px;
 }
 
 .landing-body::before {
@@ -66,6 +71,7 @@ body {
     text-align: center;
     box-shadow: 0 30px 70px rgba(0, 0, 0, 0.75), inset 0 1px 1px rgba(255, 255, 255, 0.1);
     animation: landingGlance 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    z-index: 10;
 }
 
 @keyframes landingGlance {
@@ -166,7 +172,7 @@ body {
 }
 
 .gender-card input[type="radio"]:checked + .gender-box {
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .gender-card input[type="radio"]:checked + .gender-box .gender-text {
@@ -389,9 +395,11 @@ body {
     display: flex;
     flex-direction: column;
     height: 100vh;
+    height: 100dvh;
     max-width: 1020px;
     margin: 0 auto;
     background: rgba(9, 9, 11, 0.2);
+    position: relative;
 }
 
 .chat-header {
@@ -400,8 +408,10 @@ body {
     justify-content: space-between;
     padding: 20px 26px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    background: rgba(15, 15, 23, 0.2);
+    background: rgba(15, 15, 23, 0.8);
     backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 10;
 }
 
 .chat-header-left {
@@ -469,13 +479,14 @@ body {
     display: flex;
     gap: 12px;
     padding: 14px 26px;
-    background: rgba(12, 12, 20, 0.4);
+    background: rgba(12, 12, 20, 0.8);
     border-bottom: 1px solid rgba(255, 255, 255, 0.03);
     overflow-x: auto;
+    scrollbar-width: none; /* Hide for Firefox */
 }
 
 .categories::-webkit-scrollbar {
-    display: none;
+    display: none; /* Hide for Chrome */
 }
 
 .categories button {
@@ -511,6 +522,8 @@ body {
     flex-direction: column;
     gap: 22px;
     background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.3));
+    contain: layout paint; /* Performance optimization against stream rendering layout shifts */
+    overflow-anchor: auto; /* Locks fluid scrolling at bottom elements */
 }
 
 #chat-box::-webkit-scrollbar {
@@ -578,7 +591,10 @@ body {
 .chat-input-area {
     padding: 24px 30px;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
-    background: rgba(9, 9, 11, 0.4);
+    background: rgba(9, 9, 11, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 10;
 }
 
 .chat-input-wrapper {
@@ -602,125 +618,3 @@ body {
     flex: 1;
     background: transparent;
     border: none;
-    outline: none;
-    color: white;
-    font-size: 15px;
-    padding: 10px 0;
-}
-
-.chat-input-wrapper input::placeholder {
-    color: #64748b;
-}
-
-.chat-input-wrapper button {
-    width: 46px;
-    height: 46px;
-    border-radius: 50%;
-    border: none;
-    background: linear-gradient(135deg, #4f46e5, #d946ef);
-    color: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
-}
-
-.chat-input-wrapper button:hover {
-    transform: scale(1.06) rotate(-4deg);
-    box-shadow: 0 6px 22px rgba(217, 70, 239, 0.5);
-}
-
-.typing {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 12px 20px;
-    background: rgba(255, 255, 255, 0.04);
-    border-radius: 20px;
-    width: fit-content;
-    margin-left: 82px;
-    margin-bottom: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.02);
-}
-
-.typing span {
-    width: 6px;
-    height: 6px;
-    background: #a1a1aa;
-    border-radius: 50%;
-    animation: typingBlink 1.4s infinite both;
-}
-.typing span:nth-child(2) { animation-delay: 0.2s; }
-.typing span:nth-child(3) { animation-delay: 0.4s; }
-
-/* ==========================================================================
-   6. PREMIUM LEGAL COMPLIANCE LAYOUT STYLES
-   ========================================================================== */
-.legal-wrapper {
-    max-width: 800px;
-    margin: 60px auto;
-    padding: 45px;
-    border-radius: 28px;
-    line-height: 1.8;
-    text-align: left;
-}
-
-.legal-wrapper h2 {
-    color: #ffffff;
-    margin-top: 30px;
-    margin-bottom: 12px;
-    font-size: 1.35rem;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-}
-
-.legal-wrapper p {
-    color: #cbd5e1;
-    font-size: 0.95rem;
-    margin-bottom: 18px;
-}
-
-@keyframes typingBlink {
-    0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
-    40% { opacity: 1; transform: scale(1.2); }
-}
-
-@keyframes slideUp {
-    from { opacity: 0; transform: translateY(16px); filter: blur(3px); }
-    to { opacity: 1; transform: translateY(0); filter: blur(0); }
-}
-
-@media (max-width: 680px) {
-    .feed { padding: 0 20px 40px; gap: 18px; }
-    #chat-box { padding: 20px; }
-    .message { max-width: 88%; }
-    .categories { padding: 10px 16px; }
-    .chat-header { padding: 16px; }
-    .landing-card { padding: 35px 24px; }
-    .legal-wrapper { margin: 30px 15px; padding: 25px; }
-}
-
-/* ==========================================================================
-   7. CHARACTER.AI SMOOTH FLOW STREAM ANIMATIONS
-   ========================================================================== */
-.bubble {
-    transition: all 0.1s ease-out;
-}
-
-/* Elegant High-Fashion Styling for Asterisk Narratives (*actions*) */
-.bubble em.roleplay-action {
-    color: #c7d2fe !important;
-    font-family: 'Playfair Display', serif;
-    font-style: italic !important;
-    font-weight: 400;
-    letter-spacing: 0.3px;
-    animation: textFadeIn 0.22s ease-in-out forwards;
-}
-
-@keyframes textFadeIn {
-    from { opacity: 0; transform: translateY(2px); filter: blur(1px); }
-    to { opacity: 1; transform: translateY(0); filter: blur(0); }
-}
