@@ -20,7 +20,7 @@
 
     <div class="feed" id="feed">
         {% for name, c in characters.items() %}
-        <a href="/chat/{{ name }}" class="card">
+        <a href="/chat/{{ name }}" class="card character-card">
             <div class="img-box">
                 <img src="{{ url_for('static', filename=c.image) }}" alt="{{ name }}">
                 <div class="overlay"></div>
@@ -33,23 +33,25 @@
         {% endfor %}
     </div>
 
+    <div class="ad-placement-wrapper" style="width:100%; max-width:1200px; margin: 30px auto; text-align:center; min-height:90px; clear:both; position:relative; z-index:999;">
+        <script src="https://pl29685963.effectivecpmnetwork.com/aa/67/39/aa6739f3ca5a3359a953f59691ef2bba.js"></script>
+    </div>
+
     <script>
-        // Soft fallback routing logic checks to make sure state stays persistent
         window.addEventListener("load", function () {
             if (!localStorage.getItem("genderSelected")) {
                 window.location.href = "/";
             }
         });
 
+        // FIX: Reconfigured search logic selector to target ONLY character item links, leaving advertisement script layers untouched
         document.getElementById("searchBox").addEventListener("input", function () {
             let query = this.value.toLowerCase();
-            document.querySelectorAll(".card").forEach(card => {
+            document.querySelectorAll(".character-card").forEach(card => {
                 let text = card.innerText.toLowerCase();
-                card.style.display = text.includes(query) ? "flex" : "none";
+                card.style.display = text.includes(query) ? "inline-block" : "none";
             });
         });
     </script>
-
-    <script src="https://pl29685963.effectivecpmnetwork.com/aa/67/39/aa6739f3ca5a3359a953f59691ef2bba.js"></script>
 </body>
 </html>
