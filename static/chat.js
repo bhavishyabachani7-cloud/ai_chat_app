@@ -5,12 +5,12 @@ const msgInput = document.getElementById("msg");
 let isWaitingForBot = false;
 
 function setMode(mode, btnElement) {
-    if (!btnElement) return;
+    if (!btnElement || !CHARACTER) return;
     
     fetch("/set_mode", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ mode })
+        body: JSON.stringify({ mode: mode, character: CHARACTER }) // Added unique character mapping context explicitly
     }).catch(err => console.error("Error setting mode profile:", err));
 
     document.querySelectorAll(".categories button").forEach(btn => btn.classList.remove("active"));
@@ -23,7 +23,9 @@ function formatRoleplayText(text) {
 }
 
 function scrollToBottom() {
-    chatBox.scrollTop = chatBox.scrollHeight;
+    if(chatBox) {
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
 }
 
 async function sendMsg(initialRun = false) {
@@ -35,11 +37,15 @@ async function sendMsg(initialRun = false) {
     if (!initialRun) {
         addClientMessage(currentMessageText);
         msgInput.value = "";
+    } else {
+        // If it's an initial setup run check if chatBox already has elements logged.
+        // Prevents duplications on sudden browser soft-reloads.
+        if (chatBox.querySelectorAll(".message").length > 0) return;
     }
 
     // Activate loading states
     isWaitingForBot = true;
-    typingIndicator.style.display = "flex";
+    if(typingIndicator) typingIndicator.style.display = "flex";
     msgInput.setAttribute("disabled", "true");
     msgInput.placeholder = `${CHARACTER} is typing...`;
     scrollToBottom();
@@ -65,7 +71,7 @@ async function sendMsg(initialRun = false) {
             body: JSON.stringify({ message: currentMessageText, character: CHARACTER })
         });
 
-        typingIndicator.style.display = "none";
+        if(typingIndicator) typingIndicator.style.display = "none";
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let globalResponseText = "";
@@ -80,8 +86,12 @@ async function sendMsg(initialRun = false) {
             
             for (const line of lines) {
                 if (line.startsWith("data: ")) {
+                    let standardLineData = line.slice(6).strip ? line.slice(6).strip() : line.slice(6);
+                    if (standardLineData === "[DONE]") {
+                        break;
+                    }
                     try {
-                        const parsed = JSON.parse(line.slice(6));
+                        const parsed = JSON.parse(standardLineData);
                         if (parsed.token) {
                             globalResponseText += parsed.token;
                             textBubble.innerHTML = formatRoleplayText(globalResponseText);
@@ -92,7 +102,7 @@ async function sendMsg(initialRun = false) {
             }
         }
     } catch (error) {
-        typingIndicator.style.display = "none";
+        if(typingIndicator) typingIndicator.style.display = "none";
         textBubble.innerHTML = "*sighs* Connection dropped out for a second. Can you try again?";
     }
 
@@ -114,12 +124,16 @@ function addClientMessage(text) {
     scrollToBottom();
 }
 
-msgInput.addEventListener("keypress", event => {
-    if (event.key === "Enter") {
-        event.preventDefault();
-        sendMsg(false);
-    }
-});
+if(msgInput) {
+    msgInput.addEventListener("keypress", event => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            sendMsg(false);
+        }
+    });
+}
 
 // Auto-trigger opening greetings instantly via streaming hook on entry
-window.onload = () => { sendMsg(true); };
+window.addEventListener('DOMContentLoaded', () => { 
+    sendMsg(true); 
+});
