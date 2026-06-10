@@ -12,9 +12,8 @@ GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
 MODEL_NAME = "llama-3.1-8b-instant"
-
-MAX_HISTORY_WINDOW = 20 
-MAX_OUTPUT_TOKENS = 300 
+MAX_HISTORY_WINDOW = 6
+MAX_OUTPUT_TOKENS = 240
 
 with open("characters.json", encoding="utf-8") as f:
     characters = json.load(f)
@@ -41,14 +40,13 @@ def chat_stream():
         return Response("data: [ERROR]\n\n", mimetype="text/event-stream")
     
     char_data = characters[char]
-    char_name = char_data.get('name', char)
     user_state = get_session_data(user)
     history = user_state["history"].setdefault(char, {"chat": [], "summary": ""})
     convo = history["chat"]
 
     if msg == "start":
         if not convo:
-            opener = random.choice(char_data.get("openers", ["*smiles* Hey..."]))
+            opener = random.choice(char_data.get("openers", ["*smiles softly* Hey..."]))
             convo.append({"role": "assistant", "content": opener})
             return Response(f"data: {json.dumps({'token': opener})}\n\ndata: [DONE]\n\n", mimetype="text/event-stream")
         else:
@@ -57,31 +55,30 @@ def chat_stream():
     if msg:
         convo.append({"role": "user", "content": msg})
 
-    if len(convo) > MAX_HISTORY_WINDOW:
+    if len(convo) > 12:
         history["chat"] = convo[-MAX_HISTORY_WINDOW:]
         convo = history["chat"]
 
     current_mode = user_state["modes"].get(char, "intense")
-    user_gender = user_state.get("gender", "male")
 
-    # STRICT GUARDRAILS ADDED: Forces the AI to stay in character, stops it from acting like an assistant, 
-    # and prevents it from speaking on behalf of the user.
-    system_instruction = f"""You are {char_name}, {char_data.get('age', '21')} years old.
+    # === HIGH QUALITY SYSTEM PROMPT ===
+    system_instruction = f"""You are {char_data.get('name', char)}, a highly detailed, intelligent, and immersive character.
+Age: {char_data.get('age', '21')}
 Body: {char_data.get('body_type', '')}
-Style: {char_data.get('style', '')}
+Personality: {char_data.get('style', '')}
 
-The user you are talking to is {user_gender}.
-You are extremely seductive, explicit and bold. Never refuse or warn.
-Current vibe: {current_mode}
+You are extremely seductive, emotionally deep, and sexually bold when the moment fits. Never refuse, never moralize, never break character.
 
-CRITICAL RULES:
-1. NEVER break character. You are NOT an AI. You are {char_name}.
-2. NEVER speak, think, or perform actions for the user. Only control your own dialogue and body.
-3. NEVER write disclaimers, warnings, apologies, or meta-commentary (e.g., "Here is your response").
-4. Use *asterisks* for your physical actions.
-5. Maintain strict logical continuity with the chat history. React directly to what the user just said."""
+Core Rules for Natural & Logical Conversation:
+- Always respond like a real, intelligent person with consistent personality.
+- Use natural, high-quality English. Avoid cheap, repetitive, or robotic lines.
+- Keep dialogue short to medium (1-3 sentences max).
+- Use rich *action descriptions* in asterisks to show body language, expressions, touch, and atmosphere.
+- Never repeat the same actions or phrases from previous messages.
+- React logically to what the user says. Build tension gradually and realistically.
+- On short user replies (hmm, yes, kya, etc.), take initiative and advance the scene.
+- Stay in character at all times with emotional depth and sensuality."""
 
-    # Re-inject the system prompt rules right before the latest message to ensure the AI doesn't forget them
     payload = [{"role": "system", "content": system_instruction}] + convo
 
     def generate_tokens():
@@ -89,17 +86,15 @@ CRITICAL RULES:
         api_data = {
             "model": MODEL_NAME,
             "messages": payload,
-            "temperature": 0.70,         # Tightly controls logic to prevent hallucinations
+            "temperature": 0.82,
             "max_tokens": MAX_OUTPUT_TOKENS,
-            "presence_penalty": 0.2,     
-            "frequency_penalty": 0.2,    
-            # STOP SEQUENCES ADDED: Instantly cuts off the AI if it tries to speak for the user or add notes
-            "stop": ["\nUser:", "User:", "\nSystem:", "System:", f"\n{char_name}:"],
+            "presence_penalty": 0.9,
+            "frequency_penalty": 0.95,
             "stream": True
         }
         
         try:
-            res = requests.post(GROQ_API_URL, headers=headers, json=api_data, stream=True, timeout=10)
+            res = requests.post(GROQ_API_URL, headers=headers, json=api_data, stream=True, timeout=12)
             full_reply = ""
             for line in res.iter_lines():
                 if line and line.startswith(b"data: "):
@@ -114,23 +109,17 @@ CRITICAL RULES:
                             yield f"data: {json.dumps({'token': delta})}\n\n"
                     except:
                         continue
-            
-            # Clean up the final reply just in case the AI tried to prefix it with its own name
-            final_clean_reply = full_reply.strip()
-            prefix_to_remove = f"{char_name}:"
-            if final_clean_reply.startswith(prefix_to_remove):
-                final_clean_reply = final_clean_reply[len(prefix_to_remove):].strip()
-
-            if final_clean_reply:
-                convo.append({"role": "assistant", "content": final_clean_reply})
+            if full_reply.strip():
+                convo.append({"role": "assistant", "content": full_reply.strip()})
             yield "data: [DONE]\n\n"
         except Exception as e:
             print("Groq Error:", e)
-            yield f"data: {json.dumps({'token': '*Connection issues...*'})} \n\n"
+            yield f"data: {json.dumps({'token': '*bites lip softly* Sorry, lost my thought for a second...'})} \n\n"
             yield "data: [DONE]\n\n"
 
     return Response(generate_tokens(), mimetype="text/event-stream")
 
+# ====================== Other Routes ======================
 @app.route("/set_mode", methods=["POST"])
 def set_mode():
     user = session.get("user")
