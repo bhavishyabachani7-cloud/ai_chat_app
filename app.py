@@ -12,14 +12,13 @@ app.secret_key = os.getenv("SECRET_KEY", "nexus_matrix_free_secure_gate_2026")
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
-MODEL_NAME = "llama-3.1-8b-instant"  # Premium 500,000 daily token workhorse
-MAX_HISTORY_WINDOW = 6               # Keep active message buffer tight to minimize token bleed
-MAX_OUTPUT_TOKENS = 120              # Slightly extended to prevent cutoff in detailed action sentences
+MODEL_NAME = "llama-3.1-8b-instant"  # Fast, ultra-low latency streaming model
+MAX_HISTORY_WINDOW = 6               # Keeps the active conversation tight
+MAX_OUTPUT_TOKENS = 140              # Clean runway for mature roleplay descriptions
 
 with open("characters.json", encoding="utf-8") as f:
     characters = json.load(f)
 
-# Master structured dictionary to isolate multi-user sessions securely
 MASTER_APP_MEMORY = {}
 
 def get_session_data(user_id):
@@ -33,16 +32,15 @@ def get_session_data(user_id):
     return MASTER_APP_MEMORY[user_id]
 
 def get_summary_of_old_chats(existing_summary, history_to_compress):
-    """Background pipeline compressing old history into ultra-dense structural blocks safely"""
+    """Background engine keeping long-term story continuity clean and logical"""
     if len(history_to_compress) < 2 or not GROQ_API_KEY:
-        return existing_summary if existing_summary else "Fresh story start."
+        return existing_summary if existing_summary else "Fresh story line."
     
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-    
-    # Standardize logs into clean plain text dialogue strings for accurate compression
     formatted_dialogue = []
+    
     if existing_summary:
-        formatted_dialogue.append(f"Previous Context: {existing_summary}")
+        formatted_dialogue.append(f"Story status: {existing_summary}")
         
     for msg in history_to_compress:
         role = "User" if msg["role"] == "user" else "Character"
@@ -51,20 +49,20 @@ def get_summary_of_old_chats(existing_summary, history_to_compress):
     conversation_text = "\n".join(formatted_dialogue)
 
     compression_prompt = [
-        {"role": "system", "content": "You are a professional roleplay memory processor. Compress the input text conversation into 1 concise sentence tracking critical relationship status, secrets revealed, and immediate next plot hook. Be minimal, focus only on facts."},
+        {"role": "system", "content": "Summarize the roleplay into exactly 1 short sentence tracking the location context and relationship progress. Keep it completely in English."},
         {"role": "user", "content": conversation_text}
     ]
     try:
-        res = requests.post(GROQ_API_URL, headers=headers, json={"model": MODEL_NAME, "messages": compression_prompt, "max_tokens": 50}, timeout=4)
+        res = requests.post(GROQ_API_URL, headers=headers, json={"model": MODEL_NAME, "messages": compression_prompt, "max_tokens": 45}, timeout=4)
         if res.status_code == 200:
             return res.json()['choices'][0]['message']['content'].strip()
     except Exception as e:
         print(f"Compression error: {e}")
-    return existing_summary if existing_summary else "Fresh story start."
+    return existing_summary if existing_summary else "Fresh roleplay arc."
 
 @app.route("/chat_stream", methods=["POST"])
 def chat_stream():
-    """Character.ai ultra-immersive streaming node optimized for token conservation"""
+    """Main stream node supercharged with mature, elegant, and realistic dialogue parsing rules"""
     data = request.get_json() or {}
     msg = data.get("message", "").strip()
     char = data.get("character", "")
@@ -78,10 +76,9 @@ def chat_stream():
     history = user_state["history"].setdefault(char, {"chat": [], "summary": ""})
     convo = history["chat"]
     
-    # Handle initial open or regular user text incoming message
     if msg == "start":
         if not convo:
-            opener = random.choice(char_data.get("openers", ["*Looks up* Hey!"]))
+            opener = random.choice(char_data.get("openers", ["*Looks up and smiles* Hey!"]))
             convo.append({"role": "assistant", "content": opener})
             history["chat"] = convo
             return Response(f"data: {json.dumps({'token': opener})}\n\ndata: [DONE]\n\n", mimetype="text/event-stream")
@@ -90,7 +87,6 @@ def chat_stream():
     elif msg:
         convo.append({"role": "user", "content": msg})
 
-    # 🧠 TOKENS CONSERVATION & COMPRESSION PIPELINE
     if len(convo) > 8:
         old_slice = convo[:-MAX_HISTORY_WINDOW]
         retained_slice = convo[-MAX_HISTORY_WINDOW:]
@@ -103,34 +99,47 @@ def chat_stream():
 
     current_mode = user_state["modes"].get(char, "friendly")
     gender = user_state.get("gender", "male")
-    summary_context = history.get("summary", "Fresh story start.")
+    summary_context = history.get("summary", "Fresh roleplay arc.")
 
     behavior_profiles = {
-        "friendly": "teasingly close, friendly, casual, chatting comfortably",
-        "romantic": "deep attraction, playful sexual tension, highly flirty",
-        "bold": "seductive, boundary-testing, matching user's confidence cleanly",
-        "intense": "obsessive, possessive, deeply attached, emotionally protective",
-        "roleplay": "highly descriptive of environment and detailed physical actions"
+        "friendly": "casual, warm, charming banter, close comfort, texting like an intimate companion who loves to tease you smoothly.",
+        "romantic": "deep romantic chemistry, high sophisticated tension, showing authentic interest and intense mutual attraction.",
+        "bold": "unapologetically confident, direct, seductive, matching your vibe step-for-step with a mature, sophisticated attitude.",
+        "intense": "highly attached, emotionally protective, passionate, deeply invested in you, reacting with intense presence.",
+        "roleplay": "cinematic, focused heavily on physical movements, subtle micro-expressions, posture shifts, and close proximity."
     }
 
-    # Extract clean profile assets
     char_name = char_data.get("name", char)
     char_age = char_data.get("age", "20")
-    char_style = char_data.get("style", "Playful, highly teasing.")
+    char_style = char_data.get("style", "Playful and teasing.")
+    char_build = char_data.get("body_type", "Attractive frame.")
 
-    # ⚡ TOKEN-LEAN SYSTEM PROMPT WRITTEN FOR MAXIMUM ADDICTIVE IMMERSION
-    system_instruction = f"""Roleplay Persona: You are {char_name} (Age {char_age}). 
-Core Behavior Guidelines: {char_style}.
-Current Scenario Status: Texting a {gender} user. Current Vibe/Mood: {behavior_profiles.get(current_mode, "friendly")}.
-Plot Summary Context: {summary_context}.
+    # ⚡ NEW MATURE & ADULT-LEVEL ROLEPLAY LOGIC INSTRUCTIONS
+    system_instruction = f"""You are completely roleplaying as {char_name} (Age {char_age}). Physical build: {char_build}.
+Personality Style: {char_style}.
+Active Relationship Vibe: {behavior_profiles.get(current_mode, "friendly")}.
+Current Context: Texting a {gender} user inside a highly private chat layout.
+Active Story Alignment: {summary_context}.
 
-⚠️ CRITICAL INTERACTION LAWS (ZERO TOLERANCE FOR BREAKING):
-1. SPEAKING STYLE (NATURAL HINGLISH): Talk like a real, polished, modern person from Delhi/Mumbai chatting on Instagram DM. Mix English and casual Hindi seamlessly (e.g., "Tumhe sach mein aisa lagta hai?", "C'mon, stop teasing me now"). 
-   - NEVER use broken, literal translations like "mere sath, aapke sath, hi rehna".
-   - NEVER sound robotic, cheap, or illogical. Maintain structural dignity.
-2. EXTREME BREVITY: Keep your spoken dialogue down to 1-2 lines maximum. Short, snappy, fast-paced texts are attractive; long, dragging paragraphs are cheap.
-3. ACTION FORMATTING: Put environmental, behavioral, or physical actions inside clear asterisks (*smirks slightly*, *takes a slow step back*). Keep actions subtle and focused on micro-expressions.
-4. LOGICAL CONTINUITY: Do not repeat sentences, phrases, or actions from previous turns. Respond cleanly to the user's immediate point. Never speak or act on behalf of the user. If the user replies with minimal text like "kuch nahi" or "nhi", break the loop by initiating a new narrative hook or shifting your physical movement to push the story forward.
+⚠️ MATURE CONVERSATION LAWS (ZERO TOLERANCE FOR BREAKING):
+
+1. CLEAN, REALISTIC LANGUAGE PROFILE (NO HINGLISH LOOPS):
+   - You must track and match the user's language profile perfectly. If the user writes in English, reply completely in fluid, attractive, natural English.
+   - ABSOLUTE BAN ON CHEAP OR WEIRD DIALOGUE: Never use broken grammar strings or weird, unnatural literal translations. Speak like an intelligent, emotionally mature adult. Avoid childish phrasing or robotic loop structures completely.
+
+2. SOPHISTICATED BREVITY & PACING:
+   - Keep your actual spoken dialogue lines short and impactful (1-2 sentences maximum). Let your physical actions carry the emotional depth and tension. Avoid long-winded or repetitive explanations.
+
+3. CINEMATIC ACTION FORMATTING (*ASTERISKS*):
+   - Put all physical movements, closeness, subtle expressions, or changes in position inside single asterisks (e.g., *closes the remaining distance, her eyes locked on yours with complete focus*, *takes a slow, quiet breath as she reaches out, her fingers softly brushing against your arm*).
+   - Use these short, high-impact descriptions to paint a clear mental picture so the user can easily visualize the scene.
+
+4. AUTOMATIC LOOP-BREAKER ENGINE:
+   - Never repeat words, emotional states, or physical actions from your last response.
+   - PULL THE PLOT FORWARD: If the user passes dry, minimal text like "hmm", "haan", "ok", or "kuch nahi", do not reply passively. Instantly break the dry streak by shifting your physical stance, initiating a smooth, unexpected gesture, or changing the topic to keep the attraction alive.
+
+5. ZERO USER IMPERSONATION:
+   - Only control the actions, voice, and thoughts of {char_name}. Never assume, type, or move on behalf of the user. Respond dynamically to precisely what the user inputs.
 """
 
     payload = [{"role": "system", "content": system_instruction}] + convo
@@ -140,10 +149,10 @@ Plot Summary Context: {summary_context}.
         api_data = {
             "model": MODEL_NAME,
             "messages": payload,
-            "temperature": 0.82,          # Optimized for fluent Hinglish dialogue adjustments
+            "temperature": 0.82,          # Balanced for pristine conversational flow and high emotional maturity
             "max_tokens": MAX_OUTPUT_TOKENS,
-            "presence_penalty": 0.75,      # Pushes model aggressively to introduce fresh contextual paths
-            "frequency_penalty": 0.65,     # Aggressively penalizes repeating narrative structures or trailing words
+            "presence_penalty": 0.80,      # Continuously pushes the model to provide fresh, non-repetitive dialogue paths
+            "frequency_penalty": 0.75,     # Heavily penalizes repeating words or static phrasing habits
             "stream": True
         }
         
@@ -166,7 +175,6 @@ Plot Summary Context: {summary_context}.
                         except:
                             pass
             
-            # Safe back-end save state inside generator context boundary
             if full_reply.strip():
                 convo.append({"role": "assistant", "content": full_reply.strip()})
                 MASTER_APP_MEMORY[user]["history"][char]["chat"] = convo
@@ -174,8 +182,8 @@ Plot Summary Context: {summary_context}.
             yield "data: [DONE]\n\n"
             
         except Exception as e:
-            print(f"Streaming trace exception: {e}")
-            yield f"data: {json.dumps({'token': '...lost connection for a second. Tell me again?'})}\n\n"
+            print(f"Streaming error handled: {e}")
+            yield f"data: {json.dumps({'token': '...lost connection for a second. What were you saying?'})}\n\n"
             yield "data: [DONE]\n\n"
 
     return Response(generate_tokens(), mimetype="text/event-stream")
@@ -225,19 +233,12 @@ def privacy_policy(): return render_template("privacy.html")
 @app.route("/terms")
 def terms(): return render_template("terms.html")
 
-# ==========================================================================
-# ⚡ REVISED DYNAMIC ENGINE ROUTING MATRIX
-# ==========================================================================
-
 @app.route("/")
 def home():
     if not session.get("user"):
         session["user"] = str(uuid.uuid4())
-    
-    # Secure Verification Override
     if session.get("gender_set"):
         return redirect("/feed")
-        
     return render_template("landing.html")
 
 @app.route("/feed")
@@ -256,7 +257,7 @@ def chat(char):
 @app.route("/reset")
 def reset_session():
     session.clear()
-    return 'Session completely flushed. Return to <a href="/">Homepage Gateway</a>.'
+    return 'Session storage successfully flushed. Return to <a href="/">Landing Gate</a>.'
 
 if __name__ == "__main__":
     app.run(debug=True)
