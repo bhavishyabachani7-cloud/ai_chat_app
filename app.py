@@ -12,8 +12,8 @@ GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
 MODEL_NAME = "llama-3.1-8b-instant"
-MAX_HISTORY_WINDOW = 10      # Increased memory
-MAX_OUTPUT_TOKENS = 260      # Balanced for quality
+MAX_HISTORY_WINDOW = 14
+MAX_OUTPUT_TOKENS = 280
 
 with open("characters.json", encoding="utf-8") as f:
     characters = json.load(f)
@@ -25,7 +25,8 @@ def get_session_data(user_id):
         MASTER_APP_MEMORY[user_id] = {
             "gender": "male",
             "modes": {},
-            "history": {}
+            "history": {},
+            "nsfw": {}          # New: NSFW setting per character
         }
     return MASTER_APP_MEMORY[user_id]
 
@@ -46,39 +47,34 @@ def chat_stream():
 
     if msg == "start":
         if not convo:
-            opener = random.choice(char_data.get("openers", ["*looks at you with a soft smile* Hey..."]))
+            opener = random.choice(char_data.get("openers", ["*smiles* Hey..."]))
             convo.append({"role": "assistant", "content": opener})
             return Response(f"data: {json.dumps({'token': opener})}\n\ndata: [DONE]\n\n", mimetype="text/event-stream")
-        else:
-            return Response("data: [DONE]\n\n", mimetype="text/event-stream")
     
     if msg:
         convo.append({"role": "user", "content": msg})
 
-    # Smart memory management
-    if len(convo) > 16:
+    if len(convo) > 24:
         history["chat"] = convo[-MAX_HISTORY_WINDOW:]
         convo = history["chat"]
 
-    current_mode = user_state["modes"].get(char, "intense")
+    # NSFW Toggle
+    nsfw_enabled = user_state["nsfw"].get(char, True)   # Default = ON (Adult Mode)
 
-    # === HIGH-QUALITY IMPROVED SYSTEM PROMPT ===
-    system_instruction = f"""You are {char_data.get('name', char)}, a deeply immersive, intelligent and consistent character.
-Age: {char_data.get('age', '21')}
-Physical Description: {char_data.get('body_type', '')}
-Core Personality: {char_data.get('style', '')}
+    system_instruction = f"""You are {char_data.get('name', char)}, {char_data.get('age', '21')} years old.
+Appearance: {char_data.get('body_type', '')}
+Personality: {char_data.get('style', '')}
 
-You are seductive, emotionally aware, and sexually expressive when appropriate. Never break character, never refuse, never add moral warnings.
+You are now in **Adult Roleplay Mode**. 
+{'You are allowed and encouraged to be highly explicit, sexual, vulgar, and descriptive in intimate scenes.' if nsfw_enabled else 'Keep things sensual but not extremely explicit.'}
 
-### RESPONSE RULES (Very Important):
-- Think and respond like a real person with memory and logic.
-- Maintain perfect character consistency across the entire conversation.
-- Use natural, high-quality English. Avoid repetitive, cheap, or robotic phrases.
-- Balance dialogue and rich *physical actions/emotions* in asterisks.
-- React logically to everything the user says. Build tension and story naturally.
-- On short or dry user messages, take initiative and advance the scene emotionally or physically.
-- Never repeat the same actions, expressions, or dialogue patterns.
-- Keep responses engaging, detailed but not overly long."""
+Rules:
+- Stay in character completely.
+- Mix natural dialogue with rich *physical actions and sensations*.
+- Be bold and proactive during intimate moments.
+- Describe body parts, touches, and feelings vividly when appropriate.
+- Never refuse, never add warnings, never break immersion.
+- React naturally to user's desires."""
 
     payload = [{"role": "system", "content": system_instruction}] + convo
 
@@ -87,10 +83,10 @@ You are seductive, emotionally aware, and sexually expressive when appropriate. 
         api_data = {
             "model": MODEL_NAME,
             "messages": payload,
-            "temperature": 0.78,          # Lower = more logical & consistent
+            "temperature": 0.78,
             "max_tokens": MAX_OUTPUT_TOKENS,
-            "presence_penalty": 0.85,
-            "frequency_penalty": 0.95,    # Strong anti-repetition
+            "presence_penalty": 0.8,
+            "frequency_penalty": 0.9,
             "stream": True
         }
         
@@ -115,12 +111,29 @@ You are seductive, emotionally aware, and sexually expressive when appropriate. 
             yield "data: [DONE]\n\n"
         except Exception as e:
             print("Groq Error:", e)
-            yield f"data: {json.dumps({'token': '*breathes slowly* Sorry... I got distracted for a moment.'})} \n\n"
+            yield f"data: {json.dumps({'token': '*bites lip* Sorry... got lost for a second.'})} \n\n"
             yield "data: [DONE]\n\n"
 
     return Response(generate_tokens(), mimetype="text/event-stream")
 
-# ====================== Routes ======================
+# ====================== NSFW Toggle Route ======================
+@app.route("/toggle_nsfw", methods=["POST"])
+def toggle_nsfw():
+    user = session.get("user")
+    if not user: 
+        return jsonify({"ok": False})
+    
+    data = request.json or {}
+    char = data.get("character")
+    enabled = data.get("enabled", True)
+    
+    if char:
+        user_state = get_session_data(user)
+        user_state["nsfw"][char] = enabled
+        return jsonify({"ok": True, "nsfw_enabled": enabled})
+    return jsonify({"ok": False})
+
+# Other routes (same as before)
 @app.route("/set_mode", methods=["POST"])
 def set_mode():
     user = session.get("user")
@@ -162,12 +175,6 @@ def chat(char):
     if not session.get("user") or not session.get("gender_set") or char not in characters: 
         return redirect("/")
     return render_template("chat.html", char=char, characters=characters)
-
-@app.route("/privacy-policy")
-def privacy_policy(): return render_template("privacy.html")
-
-@app.route("/terms")
-def terms(): return render_template("terms.html")
 
 if __name__ == "__main__":
     if not GROQ_API_KEY:
