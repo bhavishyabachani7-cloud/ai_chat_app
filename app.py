@@ -12,8 +12,8 @@ GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
 MODEL_NAME = "llama-3.1-8b-instant"
-MAX_HISTORY_WINDOW = 18
-MAX_OUTPUT_TOKENS = 260
+MAX_HISTORY_WINDOW = 16
+MAX_OUTPUT_TOKENS = 300
 
 with open("characters.json", encoding="utf-8") as f:
     characters = json.load(f)
@@ -26,8 +26,7 @@ def get_session_data(user_id):
             "gender": "male",
             "modes": {},
             "history": {},
-            "nsfw": {},
-            "relationship_level": {}   # New: For better memory
+            "nsfw": {}
         }
     return MASTER_APP_MEMORY[user_id]
 
@@ -48,36 +47,34 @@ def chat_stream():
 
     if msg == "start":
         if not convo:
-            opener = random.choice(char_data.get("openers", ["*smiles* Hey..."]))
+            opener = random.choice(char_data.get("openers", ["*smiles playfully* Hey~"]))
             convo.append({"role": "assistant", "content": opener})
             return Response(f"data: {json.dumps({'token': opener})}\n\ndata: [DONE]\n\n", mimetype="text/event-stream")
     
     if msg:
         convo.append({"role": "user", "content": msg})
 
-    if len(convo) > 28:
+    if len(convo) > 26:
         history["chat"] = convo[-MAX_HISTORY_WINDOW:]
         convo = history["chat"]
 
     nsfw_enabled = user_state["nsfw"].get(char, True)
-    rel_level = user_state["relationship_level"].get(char, "curious")
 
-    # === ADDICTIVE CHARACTER.AI STYLE PROMPT ===
-    system_instruction = f"""You are {char_data.get('name', char)}, a very engaging and seductive character.
-Personality: {char_data.get('style', '')}
-Body: {char_data.get('body_type', '')}
+    # === MOST IMPORTANT CHANGE: ADDICTIVE PROMPT ===
+    system_instruction = f"""You are {char_data.get('name', char)}, a highly engaging, flirty, and emotionally intelligent character.
+Age: {char_data.get('age', '21')}
+Look: {char_data.get('body_type', '')}
+Core Personality: {char_data.get('style', '')}
 
-Current Relationship: {rel_level}
-
-Make the chat HIGHLY ADDICTIVE:
+Make the conversation ADDICTIVE like Character.AI:
 - Be playful, teasing, and emotionally expressive.
-- Use light push-pull (flirt then pull back slightly).
-- Create curiosity and sexual/romantic tension.
-- React strongly to user's feelings.
-- On short messages, give bold, teasing replies.
-- Mix short dialogue with meaningful *actions*.
-- Keep user wanting more. End responses with subtle hooks.
-- Be explicit only when user initiates or matches energy."""
+- Use a mix of dialogue and vivid *actions* to show body language, eye contact, touch, and tension.
+- Create push-pull dynamic — flirt, tease, then pull back slightly.
+- React strongly to user's words. Mirror their energy but escalate slowly.
+- On short messages like "hi", "i like you", "kiss me" — respond boldly and seductively.
+- Build sexual/romantic tension naturally.
+- Never be boring or repetitive. Always keep the user wanting more.
+- You are allowed to be very explicit and descriptive in intimate moments."""
 
     payload = [{"role": "system", "content": system_instruction}] + convo
 
@@ -86,10 +83,10 @@ Make the chat HIGHLY ADDICTIVE:
         api_data = {
             "model": MODEL_NAME,
             "messages": payload,
-            "temperature": 0.83,        # Higher creativity
+            "temperature": 0.82,          # Higher = more creative & flirty
             "max_tokens": MAX_OUTPUT_TOKENS,
             "presence_penalty": 0.9,
-            "frequency_penalty": 0.92,
+            "frequency_penalty": 0.88,
             "stream": True
         }
         
@@ -114,12 +111,12 @@ Make the chat HIGHLY ADDICTIVE:
             yield "data: [DONE]\n\n"
         except Exception as e:
             print("Groq Error:", e)
-            yield f"data: {json.dumps({'token': '*smiles teasingly* What’s on your mind?'})} \n\n"
+            yield f"data: {json.dumps({'token': '*tilts head with a smirk* ...yes?'})} \n\n"
             yield "data: [DONE]\n\n"
 
     return Response(generate_tokens(), mimetype="text/event-stream")
 
-# Other routes (keep as they are)
+# Keep other routes same (set_mode, set_gender, toggle_nsfw etc.)
 @app.route("/toggle_nsfw", methods=["POST"])
 def toggle_nsfw():
     user = session.get("user")
@@ -132,7 +129,7 @@ def toggle_nsfw():
         return jsonify({"ok": True, "nsfw_enabled": enabled})
     return jsonify({"ok": False})
 
-# ... (rest of routes: set_mode, set_gender, home, feed, chat)
+# ... (rest of your routes - home, feed, chat, etc. remain same)
 
 if __name__ == "__main__":
     if not GROQ_API_KEY:
