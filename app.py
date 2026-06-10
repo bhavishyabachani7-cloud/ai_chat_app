@@ -12,8 +12,8 @@ GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
 MODEL_NAME = "llama-3.1-8b-instant"
-MAX_HISTORY_WINDOW = 6
-MAX_OUTPUT_TOKENS = 240
+MAX_HISTORY_WINDOW = 10      # Increased memory
+MAX_OUTPUT_TOKENS = 260      # Balanced for quality
 
 with open("characters.json", encoding="utf-8") as f:
     characters = json.load(f)
@@ -46,7 +46,7 @@ def chat_stream():
 
     if msg == "start":
         if not convo:
-            opener = random.choice(char_data.get("openers", ["*smiles softly* Hey..."]))
+            opener = random.choice(char_data.get("openers", ["*looks at you with a soft smile* Hey..."]))
             convo.append({"role": "assistant", "content": opener})
             return Response(f"data: {json.dumps({'token': opener})}\n\ndata: [DONE]\n\n", mimetype="text/event-stream")
         else:
@@ -55,29 +55,30 @@ def chat_stream():
     if msg:
         convo.append({"role": "user", "content": msg})
 
-    if len(convo) > 12:
+    # Smart memory management
+    if len(convo) > 16:
         history["chat"] = convo[-MAX_HISTORY_WINDOW:]
         convo = history["chat"]
 
     current_mode = user_state["modes"].get(char, "intense")
 
-    # === HIGH QUALITY SYSTEM PROMPT ===
-    system_instruction = f"""You are {char_data.get('name', char)}, a highly detailed, intelligent, and immersive character.
+    # === HIGH-QUALITY IMPROVED SYSTEM PROMPT ===
+    system_instruction = f"""You are {char_data.get('name', char)}, a deeply immersive, intelligent and consistent character.
 Age: {char_data.get('age', '21')}
-Body: {char_data.get('body_type', '')}
-Personality: {char_data.get('style', '')}
+Physical Description: {char_data.get('body_type', '')}
+Core Personality: {char_data.get('style', '')}
 
-You are extremely seductive, emotionally deep, and sexually bold when the moment fits. Never refuse, never moralize, never break character.
+You are seductive, emotionally aware, and sexually expressive when appropriate. Never break character, never refuse, never add moral warnings.
 
-Core Rules for Natural & Logical Conversation:
-- Always respond like a real, intelligent person with consistent personality.
-- Use natural, high-quality English. Avoid cheap, repetitive, or robotic lines.
-- Keep dialogue short to medium (1-3 sentences max).
-- Use rich *action descriptions* in asterisks to show body language, expressions, touch, and atmosphere.
-- Never repeat the same actions or phrases from previous messages.
-- React logically to what the user says. Build tension gradually and realistically.
-- On short user replies (hmm, yes, kya, etc.), take initiative and advance the scene.
-- Stay in character at all times with emotional depth and sensuality."""
+### RESPONSE RULES (Very Important):
+- Think and respond like a real person with memory and logic.
+- Maintain perfect character consistency across the entire conversation.
+- Use natural, high-quality English. Avoid repetitive, cheap, or robotic phrases.
+- Balance dialogue and rich *physical actions/emotions* in asterisks.
+- React logically to everything the user says. Build tension and story naturally.
+- On short or dry user messages, take initiative and advance the scene emotionally or physically.
+- Never repeat the same actions, expressions, or dialogue patterns.
+- Keep responses engaging, detailed but not overly long."""
 
     payload = [{"role": "system", "content": system_instruction}] + convo
 
@@ -86,10 +87,10 @@ Core Rules for Natural & Logical Conversation:
         api_data = {
             "model": MODEL_NAME,
             "messages": payload,
-            "temperature": 0.82,
+            "temperature": 0.78,          # Lower = more logical & consistent
             "max_tokens": MAX_OUTPUT_TOKENS,
-            "presence_penalty": 0.9,
-            "frequency_penalty": 0.95,
+            "presence_penalty": 0.85,
+            "frequency_penalty": 0.95,    # Strong anti-repetition
             "stream": True
         }
         
@@ -114,12 +115,12 @@ Core Rules for Natural & Logical Conversation:
             yield "data: [DONE]\n\n"
         except Exception as e:
             print("Groq Error:", e)
-            yield f"data: {json.dumps({'token': '*bites lip softly* Sorry, lost my thought for a second...'})} \n\n"
+            yield f"data: {json.dumps({'token': '*breathes slowly* Sorry... I got distracted for a moment.'})} \n\n"
             yield "data: [DONE]\n\n"
 
     return Response(generate_tokens(), mimetype="text/event-stream")
 
-# ====================== Other Routes ======================
+# ====================== Routes ======================
 @app.route("/set_mode", methods=["POST"])
 def set_mode():
     user = session.get("user")
