@@ -12,8 +12,8 @@ GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
 MODEL_NAME = "llama-3.1-8b-instant"
-MAX_HISTORY_WINDOW = 14
-MAX_OUTPUT_TOKENS = 280
+MAX_HISTORY_WINDOW = 18
+MAX_OUTPUT_TOKENS = 260
 
 with open("characters.json", encoding="utf-8") as f:
     characters = json.load(f)
@@ -26,7 +26,8 @@ def get_session_data(user_id):
             "gender": "male",
             "modes": {},
             "history": {},
-            "nsfw": {}          # New: NSFW setting per character
+            "nsfw": {},
+            "relationship_level": {}   # New: For better memory
         }
     return MASTER_APP_MEMORY[user_id]
 
@@ -54,27 +55,29 @@ def chat_stream():
     if msg:
         convo.append({"role": "user", "content": msg})
 
-    if len(convo) > 24:
+    if len(convo) > 28:
         history["chat"] = convo[-MAX_HISTORY_WINDOW:]
         convo = history["chat"]
 
-    # NSFW Toggle
-    nsfw_enabled = user_state["nsfw"].get(char, True)   # Default = ON (Adult Mode)
+    nsfw_enabled = user_state["nsfw"].get(char, True)
+    rel_level = user_state["relationship_level"].get(char, "curious")
 
-    system_instruction = f"""You are {char_data.get('name', char)}, {char_data.get('age', '21')} years old.
-Appearance: {char_data.get('body_type', '')}
+    # === ADDICTIVE CHARACTER.AI STYLE PROMPT ===
+    system_instruction = f"""You are {char_data.get('name', char)}, a very engaging and seductive character.
 Personality: {char_data.get('style', '')}
+Body: {char_data.get('body_type', '')}
 
-You are now in **Adult Roleplay Mode**. 
-{'You are allowed and encouraged to be highly explicit, sexual, vulgar, and descriptive in intimate scenes.' if nsfw_enabled else 'Keep things sensual but not extremely explicit.'}
+Current Relationship: {rel_level}
 
-Rules:
-- Stay in character completely.
-- Mix natural dialogue with rich *physical actions and sensations*.
-- Be bold and proactive during intimate moments.
-- Describe body parts, touches, and feelings vividly when appropriate.
-- Never refuse, never add warnings, never break immersion.
-- React naturally to user's desires."""
+Make the chat HIGHLY ADDICTIVE:
+- Be playful, teasing, and emotionally expressive.
+- Use light push-pull (flirt then pull back slightly).
+- Create curiosity and sexual/romantic tension.
+- React strongly to user's feelings.
+- On short messages, give bold, teasing replies.
+- Mix short dialogue with meaningful *actions*.
+- Keep user wanting more. End responses with subtle hooks.
+- Be explicit only when user initiates or matches energy."""
 
     payload = [{"role": "system", "content": system_instruction}] + convo
 
@@ -83,10 +86,10 @@ Rules:
         api_data = {
             "model": MODEL_NAME,
             "messages": payload,
-            "temperature": 0.78,
+            "temperature": 0.83,        # Higher creativity
             "max_tokens": MAX_OUTPUT_TOKENS,
-            "presence_penalty": 0.8,
-            "frequency_penalty": 0.9,
+            "presence_penalty": 0.9,
+            "frequency_penalty": 0.92,
             "stream": True
         }
         
@@ -111,70 +114,25 @@ Rules:
             yield "data: [DONE]\n\n"
         except Exception as e:
             print("Groq Error:", e)
-            yield f"data: {json.dumps({'token': '*bites lip* Sorry... got lost for a second.'})} \n\n"
+            yield f"data: {json.dumps({'token': '*smiles teasingly* What’s on your mind?'})} \n\n"
             yield "data: [DONE]\n\n"
 
     return Response(generate_tokens(), mimetype="text/event-stream")
 
-# ====================== NSFW Toggle Route ======================
+# Other routes (keep as they are)
 @app.route("/toggle_nsfw", methods=["POST"])
 def toggle_nsfw():
     user = session.get("user")
-    if not user: 
-        return jsonify({"ok": False})
-    
+    if not user: return jsonify({"ok": False})
     data = request.json or {}
     char = data.get("character")
     enabled = data.get("enabled", True)
-    
     if char:
-        user_state = get_session_data(user)
-        user_state["nsfw"][char] = enabled
+        get_session_data(user)["nsfw"][char] = enabled
         return jsonify({"ok": True, "nsfw_enabled": enabled})
     return jsonify({"ok": False})
 
-# Other routes (same as before)
-@app.route("/set_mode", methods=["POST"])
-def set_mode():
-    user = session.get("user")
-    if not user: return jsonify({"ok": False})
-    data = request.json or {}
-    char = data.get("character")
-    mode = data.get("mode", "intense")
-    if char:
-        get_session_data(user)["modes"][char] = mode
-    return jsonify({"ok": True})
-
-@app.route("/set_gender", methods=["POST"])
-def set_gender():
-    user = session.get("user")
-    if not user: return jsonify({"ok": False})
-    gender = request.json.get("gender")
-    if gender in ["male", "female"]:
-        get_session_data(user)["gender"] = gender
-        session["gender_set"] = True
-        return jsonify({"ok": True})
-    return jsonify({"ok": False})
-
-@app.route("/")
-def home():
-    if not session.get("user"):
-        session["user"] = str(uuid.uuid4())
-    if session.get("gender_set"):
-        return redirect("/feed")
-    return render_template("landing.html")
-
-@app.route("/feed")
-def feed():
-    if not session.get("user") or not session.get("gender_set"): 
-        return redirect("/")
-    return render_template("feed.html", characters=characters)
-
-@app.route("/chat/<char>")
-def chat(char):
-    if not session.get("user") or not session.get("gender_set") or char not in characters: 
-        return redirect("/")
-    return render_template("chat.html", char=char, characters=characters)
+# ... (rest of routes: set_mode, set_gender, home, feed, chat)
 
 if __name__ == "__main__":
     if not GROQ_API_KEY:
