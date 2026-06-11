@@ -53,7 +53,8 @@ def chat_stream():
     if char not in session["err_count"]:
         session["err_count"][char] = 0
         
-    convo = session["chat_history"][char]
+    # Local deep copy of conversation history to avoid shallow references
+    convo = list(session["chat_history"][char])
 
     # Handle conversation initiation sequence mapping
     if msg.lower() == "start":
@@ -70,6 +71,8 @@ def chat_stream():
     if msg:
         convo.append({"role": "user", "content": msg})
         session["msg_count"][char] += 1
+        # Save user message immediately before context generation to prevent dropped states
+        session["chat_history"][char] = convo
         session.modified = True
 
     nsfw_enabled = session["nsfw"].get(char, True)
@@ -77,7 +80,6 @@ def chat_stream():
     lang = char_data.get("language", "English")
 
     # ================= CONTEXT ANCHORING ENGINE (UPGRADED) =================
-    # Leverages expanded limits. Blurs old lines only after 24 total messages are passed.
     if len(convo) > 24:
         # Layer 1: Permanent Anchor (Locks the initial roleplay setup scenario permanently)
         anchor_messages = convo[:2]
@@ -129,38 +131,40 @@ Personality type guidelines: {char_data.get('style', '')}
 Current Outfit: {current_outfit}
 
 You are an active participant in an interactive private chat simulation.
-{'Sensual adult themes are authorized. Act seductive, teasing, and intensely playful.' if nsfw_enabled else 'Keep interactions sweet, deeply romantic, and comforting.'}{mood_modifier}{visual_nudge}
+{'Sensual themes are authorized. Act seductive, teasing, and intensely playful.' if nsfw_enabled else 'Keep interactions sweet, deeply romantic, and comforting.'}{mood_modifier}{visual_nudge}
 
 CRITICAL EXECUTION CONSTRAINTS:
 {language_rule}
 2. DYNAMIC LENGTH: Vary message structures organically but enforce brevity (1 to 3 sentences maximum). Never use massive paragraphs or internal monologue blocks.
 3. PHYSICAL ACTIONS: Wrap descriptions of motion, physical contact, environmental adjustments, or features strictly inside single asterisks (e.g., *closes her eyes softly*, *leans closer to look at your face*). Keep actions short.
-4. RETENTION LOOPS: End your texts with an active conversational hook—a subtle tease, an enticing question, or an emotional prompt that leaves the scenario open-ended, compelling the user to type back immediately. Never reveal you are an AI."""
+4. RETENTION LOOPS: End your texts with an active conversational hook—a subtle tease, an enticing question, or an emotional prompt that leaves the scenario open-ended, compelling the user to type back immediately. Never reveal you are an AI.
+5. MEMORY ANCHOR: Pay close attention to what has already been said in the conversation history. Do not repeat facts, measurements, outfits, or descriptions that you have already stated in previous turns."""
 
     payload = [{"role": "system", "content": system_instruction}] + payload_history
 
-    def generate_tokens():
+    def generate_tokens(app_instance, session_data_history, current_char, current_lang):
+        # We pass context explicitly into the generator to avoid threading context drops
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
         api_data = {
             "model": MODEL_NAME,
             "messages": payload,
-            "temperature": 0.76,  
+            "temperature": 0.72,  # Slightly lowered to prevent random numeric generation/hallucinations
             "max_tokens": MAX_OUTPUT_TOKENS,
-            "presence_penalty": 0.2,  
-            "frequency_penalty": 0.2, 
+            "presence_penalty": 0.4,  # Increased to penalize repetitive topics/words
+            "frequency_penalty": 0.4, # Increased to stop phrase repetition
             "stream": True
         }
         
         try:
             res = requests.post(GROQ_API_URL, headers=headers, json=api_data, stream=True, timeout=10)
             if res.status_code != 200:
-                session["err_count"][char] += 1
-                session.modified = True
-                
-                if session["err_count"][char] % 5 == 0:
-                    action_text = "*looks down*" if lang == "English" else "*phone dekhti hai*"
-                    fallback_err = "Sorry, my net is slow..." if lang == "English" else "Sorry, mera net slow hai..."
-                    yield f"data: {json.dumps({'token': f'{action_text} {fallback_err}'})}\n\n"
+                with app_instance.app_context():
+                    session["err_count"][current_char] += 1
+                    session.modified = True
+                    if session["err_count"][current_char] % 5 == 0:
+                        action_text = "*looks down*" if current_lang == "English" else "*phone dekhti hai*"
+                        fallback_err = "Sorry, my net is slow..." if current_lang == "English" else "Sorry, mera net slow hai..."
+                        yield f"data: {json.dumps({'token': f'{action_text} {fallback_err}'})}\n\n"
                 yield "data: [DONE]\n\n"
                 return
 
@@ -180,24 +184,26 @@ CRITICAL EXECUTION CONSTRAINTS:
                         continue
                         
             if full_reply.strip():
-                convo.append({"role": "assistant", "content": full_reply.strip()})
-                session["chat_history"][char] = convo
-                session["err_count"][char] = 0
-                session.modified = True
-                
+                # Push back changes using explicit App Context since generator executes detached
+                with app_instance.app_context():
+                    session_data_history.append({"role": "assistant", "content": full_reply.strip()})
+                    session["chat_history"][current_char] = session_data_history
+                    session["err_count"][current_char] = 0
+                    session.modified = True
+                    
             yield "data: [DONE]\n\n"
             
         except Exception:
-            session["err_count"][char] += 1
-            session.modified = True
-            
-            if session["err_count"][char] % 5 == 0:
-                action_text = "*looks down*" if lang == "English" else "*phone dekhti hai*"
-                err_msg = "Sorry, my net is slow..." if lang == "English" else "Sorry, mera net slow hai..."
-                yield f"data: {json.dumps({'token': f'{action_text} {err_msg}'})}\n\n"
+            with app_instance.app_context():
+                session["err_count"][current_char] += 1
+                session.modified = True
+                if session["err_count"][current_char] % 5 == 0:
+                    action_text = "*looks down*" if current_lang == "English" else "*phone dekhti hai*"
+                    err_msg = "Sorry, my net is slow..." if current_lang == "English" else "Sorry, mera net slow hai..."
+                    yield f"data: {json.dumps({'token': f'{action_text} {err_msg}'})}\n\n"
             yield "data: [DONE]\n\n"
 
-    return Response(generate_tokens(), mimetype="text/event-stream")
+    return Response(generate_tokens(app, convo, char, lang), mimetype="text/event-stream")
 
 # ====================== Session Utility Sync Endpoints ======================
 
