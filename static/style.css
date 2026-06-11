@@ -767,3 +767,57 @@ iframe, ins, [id^="aswift"], .ad-container {
 .chat-container, .landing-card {
     isolation: isolate;
 }
+
+/* ==========================================================================
+   9. INTERACTIVE LANGUAGE SELECTOR HUD ELEMENTS
+   ========================================================================== */
+.chat-header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.lang-selector-pill {
+    display: flex;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 99px;
+    padding: 3px;
+    position: relative;
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.02);
+}
+
+.lang-toggle-btn {
+    background: transparent;
+    border: none;
+    color: #a1a1aa;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 99px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lang-toggle-btn:hover {
+    color: #ffffff;
+}
+
+.lang-toggle-btn.active {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: #ffffff;
+    box-shadow: 0 4px 10px rgba(124, 58, 237, 0.3);
+}
+
+@media (max-width: 680px) {
+    .chat-header {
+        flex-direction: column;
+        gap: 14px;
+        align-items: stretch;
+    }
+    .chat-header-right {
+        justify-content: space-between;
+        width: 100%;
+    }
+}
