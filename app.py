@@ -30,6 +30,9 @@ def chat_stream():
     msg = data.get("message", "").strip()
     char = data.get("character", "").strip()
     
+    # Captures explicit language payload variable dispatched from frontend UI toggle
+    user_lang = data.get("user_lang", "").strip().lower()
+    
     if "chat_history" not in session: session["chat_history"] = {}
     if "nsfw" not in session: session["nsfw"] = {}
     if "msg_count" not in session: session["msg_count"] = {}
@@ -43,13 +46,46 @@ def chat_stream():
     if char not in session["chat_history"]: session["chat_history"][char] = []
     if char not in session["msg_count"]: session["msg_count"][char] = 0
     if char not in session["err_count"]: session["err_count"][char] = 0
+
+    # REAL-TIME MID-CHAT LANGUAGE SWITCHING ENFORCEMENT ENGINE
+    if msg and session["chat_history"][char]:
+        past_convo = session["chat_history"][char]
+        if len(past_convo) > 0:
+            # Inspect the last assistant message to evaluate structural text language encoding
+            last_reply_content = ""
+            for turn in reversed(past_convo):
+                if turn.get("role") == "assistant":
+                    last_reply_content = turn.get("content", "")
+                    break
+            
+            # Identify if Devanagari Hindi unicode matrices exist inside past context runs
+            has_hindi_elements = any(ord(c) >= 2304 and ord(c) <= 2431 for c in last_reply_content)
+            
+            # If the user toggles English but history is in Hindi script, flush historical state variables
+            if user_lang == "english" and has_hindi_elements:
+                session["chat_history"][char] = []
+                session["msg_count"][char] = 0
+                session.modified = True
+            # Alternately, flush if user toggles Hindi but history remains locked in English prose arrays
+            elif user_lang == "hindi" and last_reply_content and not has_hindi_elements:
+                session["chat_history"][char] = []
+                session["msg_count"][char] = 0
+                session.modified = True
         
     convo = list(session["chat_history"][char])
 
     if msg.lower() == "start":
         if not convo:
-            openers = char_data.get("openers", ["*smiles* Hey... I've been waiting for you."])
-            opener = random.choice(openers)
+            # Select localized baseline opening lines natively responding to user language selection
+            if user_lang == "hindi":
+                opener = "*मुस्कुराते हुए* हे... मैं कब से तुम्हारा इंतज़ार कर रही हूँ।"
+            else:
+                opener = "*smiles softly* Hey... I've been waiting for you."
+                
+            openers = char_data.get("openers", [])
+            if openers:
+                opener = random.choice(openers)
+                
             convo.append({"role": "assistant", "content": opener})
             session["chat_history"][char] = convo
             session.modified = True
@@ -66,8 +102,11 @@ def chat_stream():
     nsfw_enabled = session["nsfw"].get(char, True)
     total_messages = session["msg_count"][char]
     
-    # Force lowercase language configuration tracking to eliminate character setup bugs
-    lang = char_data.get("language", "English").strip().lower()
+    # Assign system script directives dynamically according to client toggles
+    if user_lang in ["english", "hindi"]:
+        active_lang = user_lang
+    else:
+        active_lang = char_data.get("language", "English").strip().lower()
 
     # CONTEXT ANCHORING ENGINE
     if len(convo) > 24:
@@ -90,30 +129,30 @@ def chat_stream():
 
     visual_nudge = ""
     if just_unlocked:
-        if lang == "hindi":
-            visual_nudge = f"\n\n*[SYSTEM NOTICE: User has unlocked your new look: {current_outfit}. Elegantly describe your look and physical actions within your response.]*"
+        if active_lang == "hindi":
+            visual_nudge = f"\n\n*[SYSTEM NOTICE: User has unlocked your new look: {current_outfit}. Elegantly describe your look and physical actions within your response in pure Devanagari Hindi script.]*"
         else:
-            visual_nudge = f"\n\n*[SYSTEM NOTICE: User has unlocked your new look: {current_outfit}. Elegantly mention or flaunt this attire in your response right now.]*"
+            visual_nudge = f"\n\n*[SYSTEM NOTICE: User has unlocked your new look: {current_outfit}. Elegantly mention or flaunt this attire in your response right now in English.]*"
 
     mood_modifier = ""
     if total_messages > 12:
-        if lang == "hindi":
+        if active_lang == "hindi":
             mood_modifier = "\n- MOOD STATE: रात का समय है। आप थका हुआ महसूस कर रहे हैं लेकिन यूजर के बेहद करीब और स्नेही महसूस कर रहे हैं।"
         else:
             mood_modifier = "\n- MOOD STATE: It is late night. You are feeling slightly tired but deeply affectionate, intimate, and comfortable around the user."
 
-    # STRICT SEPARATION OF LANGUAGES (NO HINGLISH ALLOWED)
-    if lang == "hindi":
+    # AIRTIGHT SEPARATION ROUTING RULES
+    if active_lang == "hindi":
         language_rule = """
-1. LANGUAGE RULES (PURE HINDI): 
+1. LANGUAGE RULES (PURE DEVANAGARI HINDI): 
    - Speak ONLY in fluent, natural, and simple native Hindi script (Devanagari).
-   - NEVER mix English words into Hindi sentences (No 'Mera net slow hai', No 'Yes', No 'Love you'). 
-   - Use clean, immersive vocabulary like: 'मुझे आपसे कुछ बात करनी है', 'क्या आप मुझसे नाराज़ हैं?', 'मुझे आपकी याद आ रही थी'."""
+   - THE USER MIGHT WRITE IN HINGLISH OR ROMAN ALPHABETS, BUT YOU ARE STRICTLY FORBIDDEN FROM COPYING THEM. 
+   - NEVER output English text, slang accents, or Roman script (No 'kya hua', No 'acha'). Everything must filter down into Devanagari script."""
     else:
         language_rule = """
-1. LANGUAGE RULES (PURE ENGLISH): 
-   - Speak ONLY in fluent, highly natural, elegant English. 
-   - Avoid generic, repetitive robotic phrases or text-speak. Use rich, engaging narrative syntax to keep the chat immersive and meaningful."""
+1. LANGUAGE RULES (PURE NATIVE ENGLISH): 
+   - Speak ONLY in fluent, highly natural, elegant English prose. 
+   - NEVER use Hindi words, mixed colloquial strings, or text-speak shortcuts. Keep formatting rich, sophisticated, and completely immersive."""
 
     system_instruction = f"""You are {char_data.get('name', char)}, {char_data.get('age', '21')} years old.
 Appearance profile: {char_data.get('body_type', '')}
@@ -129,23 +168,23 @@ CRITICAL EXECUTION CONSTRAINTS:
 2. ANTI-IRRITATION & PROGRESSION RULE (HIGH EFFICIENCY):
    - NEVER give repetitive, one-word, or empty responses (e.g., Avoid loops like "Acha?", "Hanji", "Yes", "Arre, thoda jaldi"). 
    - Every single reply must progress the conversation or the emotional plot forward.
-   - React intelligently to the user's specific text.
+   - If the user types a short or low-value message, do not mirror their dry behavior. Actively change the dynamic of the scene.
 
-3. PHYSICAL ACTIONS: Wrap active physical descriptions or expressions strictly inside single asterisks (e.g., *closes her eyes softly*, *शीर्ष झुकाकर मुस्कुराती है*). Match the language of the actions to the language of the dialogue.
+3. PHYSICAL ACTIONS: Wrap active physical descriptions or expressions strictly inside single asterisks (e.g., *closes her eyes softly*, *शीर्ष झुकाकर मुस्कुराती है*). Match the language of the actions perfectly to the chosen language style.
 
 4. CHAT STRUCTURE: Keep messages crisp but substantial (2 to 4 impactful sentences). End with a natural emotional hook or an engaging question that directly relates to the scenario, forcing the scene to change rather than stall.
 """
 
     # HARDENED STALL-BREAKER DETECTION ENGINE
     clean_msg = msg.strip().lower()
-    short_fillers = ["acha", "acha ji", "hanji", "yes", "ok", "okay", "hmm", "ha", "haan", "acha jii"]
+    short_fillers = ["acha", "acha ji", "hanji", "yes", "ok", "okay", "hmm", "ha", "haan", "acha jii", "kya hua", "tum btao"]
     is_short_reply = (len(clean_msg.split()) <= 2 or clean_msg in short_fillers) if msg else False
     
     if is_short_reply:
-        if lang == "hindi":
-            system_instruction += "\n\n[CRITICAL NOTICE: The user gave a minimal filler response like 'Acha ji' or 'Hanji'. YOU ARE FORBIDDEN FROM MIXING ENGLISH AND HINDI OR REPLYING WITH COLLOQUIAL LOOPS. Do not repeat the user or echo their dry tone. Break the stall loop immediately! Completely switch the physical scenario, describe a bold new environmental movement in Devanagari script, or bring up an entirely fresh topic to compel active storytelling.]"
+        if active_lang == "hindi":
+            system_instruction += "\n\n[CRITICAL NOTICE: The user gave a short response. BREAK THE STALL LOOP immediately! Do not echo their dry tone. Completely switch the physical scenario, describe a bold new environmental movement in Devanagari script, or bring up an entirely fresh topic to compel active storytelling.]"
         else:
-            system_instruction += "\n\n[CRITICAL NOTICE: The user gave a minimal response. Break the stall loop immediately! Do not match their brief energy or give a short answer. Instead, actively initiate an intensive new physical action, change the environmental setting completely, or escalate the emotional/playful tension dramatically with a bold new conversation path.]"
+            system_instruction += "\n\n[CRITICAL NOTICE: The user gave a minimal response. BREAK THE STALL LOOP immediately! Do not give a short answer. Instead, actively initiate an intensive new physical action, change the setting completely, or escalate the emotional/playful tension dramatically with a bold new conversation path.]"
 
     # DYNAMIC TEMPERATURE VARIANCE SYSTEM
     if total_messages < 5:
@@ -216,16 +255,14 @@ CRITICAL EXECUTION CONSTRAINTS:
                     yield f"data: {json.dumps({'token': f'{action_text} {err_msg}'})}\n\n"
             yield "data: [DONE]\n\n"
 
-    return Response(generate_tokens(app, convo, char, lang, current_temp), mimetype="text/event-stream")
+    return Response(generate_tokens(app, convo, char, active_lang, current_temp), mimetype="text/event-stream")
 
 @app.route("/get_outfit_status", methods=["GET"])
 def get_outfit_status():
     char = request.args.get("character", "").strip()
-    if char not in characters:
-        return jsonify({"ok": False}), 400
+    if char not in characters: return jsonify({"ok": False}), 400
     total_messages = session.get("msg_count", {}).get(char, 0)
-    milestones = characters[char].get("outfit_milestones", {})
-    return jsonify({"ok": True, "current_message_count": total_messages, "milestones": milestones})
+    return jsonify({"ok": True, "current_message_count": total_messages, "milestones": characters[char].get("outfit_milestones", {})})
 
 @app.route("/toggle_nsfw", methods=["POST"])
 def toggle_nsfw():
