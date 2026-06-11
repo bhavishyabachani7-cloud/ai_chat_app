@@ -158,8 +158,9 @@ CRITICAL EXECUTION CONSTRAINTS:
                 session.modified = True
                 
                 if session["err_count"][char] % 5 == 0:
+                    action_text = "*looks down*" if lang == "English" else "*phone dekhti hai*"
                     fallback_err = "Sorry, my net is slow..." if lang == "English" else "Sorry, mera net slow hai..."
-                    yield f"data: {json.dumps({'token': f'*{(\'looks down\' if lang == \'English\' else \'phone dekhti hai\')}* {fallback_err}'})}\n\n"
+                    yield f"data: {json.dumps({'token': f'{action_text} {fallback_err}'})}\n\n"
                 yield "data: [DONE]\n\n"
                 return
 
@@ -191,8 +192,9 @@ CRITICAL EXECUTION CONSTRAINTS:
             session.modified = True
             
             if session["err_count"][char] % 5 == 0:
+                action_text = "*looks down*" if lang == "English" else "*phone dekhti hai*"
                 err_msg = "Sorry, my net is slow..." if lang == "English" else "Sorry, mera net slow hai..."
-                yield f"data: {json.dumps({'token': err_msg})}\n\n"
+                yield f"data: {json.dumps({'token': f'{action_text} {err_msg}'})}\n\n"
             yield "data: [DONE]\n\n"
 
     return Response(generate_tokens(), mimetype="text/event-stream")
