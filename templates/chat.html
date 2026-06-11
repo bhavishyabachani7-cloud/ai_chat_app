@@ -19,7 +19,14 @@
                 <div class="status">Online & Responsive</div>
             </div>
         </div>
-        <a href="/feed" class="back-feed-btn">✕ Leave Room</a>
+        
+        <div class="chat-header-right">
+            <div class="lang-selector-pill">
+                <button onclick="toggleLanguage('english', this)" class="lang-toggle-btn active" id="btn-lang-en">EN</button>
+                <button onclick="toggleLanguage('hindi', this)" class="lang-toggle-btn" id="btn-lang-hi">हिं</button>
+            </div>
+            <a href="/feed" class="back-feed-btn">✕ Leave Room</a>
+        </div>
     </div>
 
     <div class="categories">
@@ -48,6 +55,27 @@
 <script>
     const CHARACTER = "{{ char }}";
     const CHARACTER_IMAGE = "{{ characters[char].image }}";
+    
+    // Default global system tracking parameter initialization
+    let currentLang = "english"; 
+
+    function toggleLanguage(lang, element) {
+        currentLang = lang;
+        
+        // Wipe old active validation states across buttons
+        document.querySelectorAll('.lang-toggle-btn').forEach(btn => btn.classList.remove('active'));
+        element.classList.add('active');
+        
+        // Dynamically shift placeholders to signal tracking shifts to the user
+        const inputField = document.getElementById('msg');
+        if (inputField && !inputField.hasAttribute("disabled")) {
+            if (lang === 'hindi') {
+                inputField.placeholder = "यहाँ संदेश या अपनी कोई हरकत लिखें...";
+            } else {
+                inputField.placeholder = "Type an action or reply here...";
+            }
+        }
+    }
 </script>
 <script src="{{ url_for('static', filename='chat.js') }}"></script>
 
