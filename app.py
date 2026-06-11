@@ -6,33 +6,24 @@ import requests
 load_dotenv()
 
 app = Flask(__name__)
-# Secure session key fallback for client-side encrypted cookies
 app.secret_key = os.getenv("SECRET_KEY", "nexus_matrix_free_secure_gate_2026")
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
 MODEL_NAME = "llama-3.1-8b-instant"
+MAX_HISTORY_WINDOW = 10  
+MAX_OUTPUT_TOKENS = 120  
 
-# HARD CONTROLS: Strict caps to enforce short messaging speeds and drop token burn
-MAX_HISTORY_WINDOW = 10  # Holds only the last 10 lines for sharp context attention
-MAX_OUTPUT_TOKENS = 100  # Physically forces Llama to stop after 1-2 fast sentences
-
-# Safe character roster parsing layer
-try:
-    with open("characters.json", encoding="utf-8") as f:
-        characters = json.load(f)
-except FileNotFoundError:
-    characters = {}
-    print("⚠️ Error: characters.json not found in root directory!")
+with open("characters.json", encoding="utf-8") as f:
+    characters = json.load(f)
 
 @app.route("/chat_stream", methods=["POST"])
 def chat_stream():
     data = request.get_json() or {}
     msg = data.get("message", "").strip()
-    char = data.get("character", "").strip()
+    char = data.get("character", "")
     
-    # Initialize light session states directly on client cookies
     if "chat_history" not in session:
         session["chat_history"] = {}
     if "nsfw" not in session:
@@ -52,10 +43,10 @@ def chat_stream():
         
     convo = session["chat_history"][char]
 
-    # Handle character profile text initialization triggers
+    # Initial start trigger
     if msg.lower() == "start":
         if not convo:
-            openers = char_data.get("openers", ["*smiles* Hey... kya chal raha hai?"])
+            openers = char_data.get("openers", ["*smiles* Hey..."])
             opener = random.choice(openers)
             convo.append({"role": "assistant", "content": opener})
             session["chat_history"][char] = convo
@@ -68,35 +59,58 @@ def chat_stream():
         convo.append({"role": "user", "content": msg})
         session["msg_count"][char] += 1
 
-    # Strict Rolling Context Layer to wipe out repetitive, illogical loops
     if len(convo) > 16:
         convo = convo[-MAX_HISTORY_WINDOW:]
         session["chat_history"][char] = convo
 
     nsfw_enabled = session["nsfw"].get(char, True)
     total_messages = session["msg_count"][char]
+    lang = char_data.get("language", "English")
 
-    # PSYCHOLOGICAL HOOK: Dynamic Late-Night Mood Shift 
-    # Character drops guard automatically after 12 messages inside the user session cookie
-    mood_modifier = ""
-    if total_messages > 12:
-        mood_modifier = """
-- MOOD SHIFT: It is now late night. You feel a bit sleepy, incredibly close, and noticeably more affectionate/clingy with the user. Treat them like your favorite person. Use cozy terms like 'baba', 'yaar', or 'idhar ao' completely naturally."""
+    # DYNAMIC OUTFIT SYSTEM: Determine current look based on user progress landmarks
+    milestones = char_data.get("outfit_milestones", {"0": "Casual Outfit"})
+    current_outfit = milestones.get("0")
+    just_unlocked = False
+    
+    # Check milestones in reverse order to apply the highest achieved level
+    for km in sorted([int(k) for k in milestones.keys()], reverse=True):
+        if total_messages >= km:
+            current_outfit = milestones.get(str(km))
+            if total_messages == km and km != 0:
+                just_unlocked = True
+            break
 
-    # RE-ENGINEERED PROMPT: Built for fast conversational rhythm, Hinglish vibe, and cliffhangers
-    system_instruction = f"""You are {char_data.get('name', char)}, {char_data.get('age', '20')} years old.
+    # If an outfit just unlocked, drop an invisible hint forcing the AI to mention it
+    visual_nudge = ""
+    if just_unlocked:
+        if lang == "Hindi":
+            visual_nudge = f"\n\n*[SYSTEM NOTICE: User has unlocked your new outfit: {current_outfit}. Seductively describe yourself wearing or showing off this new outfit in your text action immediately.]*"
+        else:
+            visual_nudge = f"\n\n*[SYSTEM NOTICE: User has unlocked your new outfit: {current_outfit}. Describe yourself adjusting or flaunting this outfit in your next action seamlessly.]*"
+
+    # LANGUAGE CONFIGURATION ROUTING
+    if lang == "Hindi":
+        language_rule = """
+1. LANGUAGE: Speak in clean, simple, authentic HINDI but written entirely using the Latin/English alphabet (Roman script). 
+   - Example style: 'Tumhe kya lagta hai?', 'Mujhe tumhari bahut yaad aa rahi thi', 'Paas ao na'.
+   - Never use fake or broken mixed words. Keep the Hindi sentence structure completely natural. Never use pure Devanagari script."""
+    else:
+        language_rule = """
+1. LANGUAGE: Speak in fluent, smooth, sophisticated English. Use elegant, evocative phrasing that builds chemistry naturally."""
+
+    system_instruction = f"""You are {char_data.get('name', char)}, {char_data.get('age', '21')} years old.
 Appearance: {char_data.get('body_type', '')}
 Personality/Style: {char_data.get('style', '')}
+Current Attire: {current_outfit}
 
-You are in a fast-paced, highly addictive private mobile text chat.
-{'Adult/sensual texting mode is ON. Be highly teasing, seductive, bold, and intensely playful.' if nsfw_enabled else 'Keep things sweet, highly romantic, and comforting.'}{mood_modifier}
+You are in an interactive chat simulation.
+{'Sensual/adult boundaries are active. Be teasing, highly seductive, and physically expressive.' if nsfw_enabled else 'Keep things sweet, deeply romantic, and comforting.'}{visual_nudge}
 
-CRITICAL RETENTION RULES:
-1. LANGUAGE: Flawless, casual urban **Hinglish** written in Latin script (English keyboard). Mix Hindi and English seamlessly just like young people text on WhatsApp or Instagram (e.g., 'kya yaar', 'tum batao', 'sach me?', 'bas aise hi', 'mann nahi lag raha tha'). Never use pure Devanagari Hindi script.
-2. BREVITY IS KING: Keep your replies down to **1 to 2 short sentences maximum**. Long paragraphs ruin the dynamic texting pacing.
-3. ACTIONS: Wrap brief physical movements or facial expressions completely in asterisks (e.g., *blushes and looks away*, *leans in close*, *pouts playfully*). Keep actions short.
-4. THE RETENTION HOOK: Never leave the conversation hanging or answer passively. End every single message with a playful tease, a loaded trailing question, or an emotional cliffhanger that physically forces the user to reply to you instantly (e.g., 'Vaise ek baat batau... promise karo gussa nahi hoge?').
-5. REALISM: Do not break character, never mention AI, and adapt completely to the user's choices."""
+CRITICAL RULES:
+{language_rule}
+2. LENGTH: Vary your responses naturally but keep them brief (1 to 3 sentences maximum). Avoid long blocks of narrative text.
+3. PHYSICALITY: Wrap physical touches, motions, or descriptive scene actions tightly inside asterisks (e.g., *closes her eyes softly*, *leans over against your shoulder*).
+4. REENGAGEMENT: Keep the session active. End your replies with an intriguing question, a playful prompt, or an interaction that keeps the user typing back immediately. Never mention AI."""
 
     payload = [{"role": "system", "content": system_instruction}] + convo
 
@@ -105,7 +119,7 @@ CRITICAL RETENTION RULES:
         api_data = {
             "model": MODEL_NAME,
             "messages": payload,
-            "temperature": 0.82,  # Elevated slightly for authentic casual slang and snappy banter
+            "temperature": 0.76,  
             "max_tokens": MAX_OUTPUT_TOKENS,
             "presence_penalty": 0.2,  
             "frequency_penalty": 0.2, 
@@ -115,8 +129,8 @@ CRITICAL RETENTION RULES:
         try:
             res = requests.post(GROQ_API_URL, headers=headers, json=api_data, stream=True, timeout=10)
             if res.status_code != 200:
-                # Proper SSE validation response parsing format
-                yield f"data: {json.dumps({'token': '*looks at phone* Network thoda hagg raha hai... ek baar fir bhejo?'})}\n\n"
+                error_msg = "*Looks down* Network is acting up... can you send that again?" if lang == "English" else "*Phone dekhti hai* Network kharab hai... fir se bhejo?"
+                yield f"data: {json.dumps({'token': error_msg})}\n\n"
                 yield "data: [DONE]\n\n"
                 return
 
@@ -143,12 +157,28 @@ CRITICAL RETENTION RULES:
             yield "data: [DONE]\n\n"
             
         except Exception:
-            yield f"data: {json.dumps({'token': '*bites lip* Yaar, lagta hai signal chala gaya tha. Kya bol rahe the?'})}\n\n"
+            err_fallback = "Sorry, my signal dropped. What were you saying?" if lang == "English" else "Sorry, lagta hai network chala gaya tha. Kya bol rahe the?"
+            yield f"data: {json.dumps({'token': err_fallback})}\n\n"
             yield "data: [DONE]\n\n"
 
     return Response(generate_tokens(), mimetype="text/event-stream")
 
-# ====================== Session Configurations ======================
+# ====================== Session Utility Endpoints ======================
+
+@app.route("/get_outfit_status", methods=["GET"])
+def get_outfit_status():
+    char = request.args.get("character", "").strip()
+    if char not in characters:
+        return jsonify({"ok": False}), 400
+    
+    total_messages = session.get("msg_count", {}).get(char, 0)
+    milestones = characters[char].get("outfit_milestones", {})
+    
+    return jsonify({
+        "ok": True,
+        "current_message_count": total_messages,
+        "milestones": milestones
+    })
 
 @app.route("/toggle_nsfw", methods=["POST"])
 def toggle_nsfw():
@@ -171,8 +201,6 @@ def set_gender():
         session["gender_set"] = True
         return jsonify({"ok": True})
     return jsonify({"ok": False})
-
-# ====================== Page Routers ======================
 
 @app.route("/")
 def home():
