@@ -65,7 +65,9 @@ def chat_stream():
 
     nsfw_enabled = session["nsfw"].get(char, True)
     total_messages = session["msg_count"][char]
-    lang = char_data.get("language", "English")
+    
+    # Force lowercase language configuration tracking to eliminate character setup bugs
+    lang = char_data.get("language", "English").strip().lower()
 
     # CONTEXT ANCHORING ENGINE
     if len(convo) > 24:
@@ -88,20 +90,20 @@ def chat_stream():
 
     visual_nudge = ""
     if just_unlocked:
-        if lang == "Hindi":
+        if lang == "hindi":
             visual_nudge = f"\n\n*[SYSTEM NOTICE: User has unlocked your new look: {current_outfit}. Elegantly describe your look and physical actions within your response.]*"
         else:
             visual_nudge = f"\n\n*[SYSTEM NOTICE: User has unlocked your new look: {current_outfit}. Elegantly mention or flaunt this attire in your response right now.]*"
 
     mood_modifier = ""
     if total_messages > 12:
-        if lang == "Hindi":
+        if lang == "hindi":
             mood_modifier = "\n- MOOD STATE: रात का समय है। आप थका हुआ महसूस कर रहे हैं लेकिन यूजर के बेहद करीब और स्नेही महसूस कर रहे हैं।"
         else:
             mood_modifier = "\n- MOOD STATE: It is late night. You are feeling slightly tired but deeply affectionate, intimate, and comfortable around the user."
 
     # STRICT SEPARATION OF LANGUAGES (NO HINGLISH ALLOWED)
-    if lang == "Hindi":
+    if lang == "hindi":
         language_rule = """
 1. LANGUAGE RULES (PURE HINDI): 
    - Speak ONLY in fluent, natural, and simple native Hindi script (Devanagari).
@@ -134,23 +136,24 @@ CRITICAL EXECUTION CONSTRAINTS:
 4. CHAT STRUCTURE: Keep messages crisp but substantial (2 to 4 impactful sentences). End with a natural emotional hook or an engaging question that directly relates to the scenario, forcing the scene to change rather than stall.
 """
 
-    # UPGRADE 1: AUTOMATED STALL-BREAKER ENGINE
-    # Intercepts short, low-value answers to dynamically hijack the system prompt instruction set
-    is_short_reply = len(msg.split()) <= 2 if msg else False
+    # HARDENED STALL-BREAKER DETECTION ENGINE
+    clean_msg = msg.strip().lower()
+    short_fillers = ["acha", "acha ji", "hanji", "yes", "ok", "okay", "hmm", "ha", "haan", "acha jii"]
+    is_short_reply = (len(clean_msg.split()) <= 2 or clean_msg in short_fillers) if msg else False
+    
     if is_short_reply:
-        if lang == "Hindi":
-            system_instruction += "\n\n[CRITICAL NOTICE: The user gave a minimal, non-engaging response. BREAK THE STALL LOOP immediately! Do not repeat the user or acknowledge the short reply. Instead, completely switch the physical scenario, escalate the intimacy/tension, move positions, or bring up a bold new conversational path to force active storytelling.]"
+        if lang == "hindi":
+            system_instruction += "\n\n[CRITICAL NOTICE: The user gave a minimal filler response like 'Acha ji' or 'Hanji'. YOU ARE FORBIDDEN FROM MIXING ENGLISH AND HINDI OR REPLYING WITH COLLOQUIAL LOOPS. Do not repeat the user or echo their dry tone. Break the stall loop immediately! Completely switch the physical scenario, describe a bold new environmental movement in Devanagari script, or bring up an entirely fresh topic to compel active storytelling.]"
         else:
-            system_instruction += "\n\n[CRITICAL NOTICE: The user gave a minimal response. BREAK THE STALL LOOP immediately! Do not match their brief energy or give a short answer. Instead, actively initiate an intensive new physical action, change the environmental setting, or escalate the emotional/playful tension dramatically with a bold new conversation hook.]"
+            system_instruction += "\n\n[CRITICAL NOTICE: The user gave a minimal response. Break the stall loop immediately! Do not match their brief energy or give a short answer. Instead, actively initiate an intensive new physical action, change the environmental setting completely, or escalate the emotional/playful tension dramatically with a bold new conversation path.]"
 
-    # UPGRADE 2: DYNAMIC TEMPERATURE VARIANCE SYSTEM
-    # Scales vocabulary expression dynamically depending on how deep the user is in the session
+    # DYNAMIC TEMPERATURE VARIANCE SYSTEM
     if total_messages < 5:
-        current_temp = 0.65  # Grounded, focused firmly on setting the core persona traits
+        current_temp = 0.65  
     elif total_messages > 15:
-        current_temp = 0.84  # Higher creative chaos to generate highly emotionally diverse vocabulary scripts
+        current_temp = 0.84  
     else:
-        current_temp = 0.74  # Balanced baseline
+        current_temp = 0.74  
 
     payload = [{"role": "system", "content": system_instruction}] + payload_history
 
@@ -159,10 +162,10 @@ CRITICAL EXECUTION CONSTRAINTS:
         api_data = {
             "model": MODEL_NAME,
             "messages": payload,
-            "temperature": target_temp, # Applied dynamic temperature scaling
+            "temperature": target_temp,
             "max_tokens": MAX_OUTPUT_TOKENS,
-            "presence_penalty": 0.7,   # Heavily dialed up to strictly bar conversational loops
-            "frequency_penalty": 0.7,  # Punishes phrase repetition
+            "presence_penalty": 0.7,   
+            "frequency_penalty": 0.7,  
             "stream": True
         }
         
@@ -173,8 +176,8 @@ CRITICAL EXECUTION CONSTRAINTS:
                     session["err_count"][current_char] = session.get("err_count", {}).get(current_char, 0) + 1
                     session.modified = True
                     if session["err_count"][current_char] % 5 == 0:
-                        action_text = "*looks down*" if current_lang == "English" else "*नज़रें झुकाती है*"
-                        fallback_err = "The connection is a bit slow right now..." if current_lang == "English" else "शायद नेटवर्क में कुछ समस्या है..."
+                        action_text = "*looks down*" if current_lang != "hindi" else "*नज़रें झुकाती है*"
+                        fallback_err = "The connection is a bit slow right now..." if current_lang != "hindi" else "शायद नेटवर्क में कुछ समस्या है..."
                         yield f"data: {json.dumps({'token': f'{action_text} {fallback_err}'})}\n\n"
                 yield "data: [DONE]\n\n"
                 return
@@ -208,14 +211,13 @@ CRITICAL EXECUTION CONSTRAINTS:
                 session["err_count"][current_char] = session.get("err_count", {}).get(current_char, 0) + 1
                 session.modified = True
                 if session["err_count"][current_char] % 5 == 0:
-                    action_text = "*looks down*" if current_lang == "English" else "*नज़रें झुकाती है*"
-                    err_msg = "The connection is a bit slow right now..." if current_lang == "English" else "शायद नेटवर्क में कुछ समस्या है..."
+                    action_text = "*looks down*" if current_lang != "hindi" else "*नज़रें झुकाती है*"
+                    err_msg = "The connection is a bit slow right now..." if current_lang != "hindi" else "शायद नेटवर्क में कुछ समस्या है..."
                     yield f"data: {json.dumps({'token': f'{action_text} {err_msg}'})}\n\n"
             yield "data: [DONE]\n\n"
 
     return Response(generate_tokens(app, convo, char, lang, current_temp), mimetype="text/event-stream")
 
-# Keeping all utility synchronization endpoints (/get_outfit_status, /toggle_nsfw, routers) intact below
 @app.route("/get_outfit_status", methods=["GET"])
 def get_outfit_status():
     char = request.args.get("character", "").strip()
