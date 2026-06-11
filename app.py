@@ -6,75 +6,97 @@ import requests
 load_dotenv()
 
 app = Flask(__name__)
+# Secure session key fallback for client-side encrypted cookies
 app.secret_key = os.getenv("SECRET_KEY", "nexus_matrix_free_secure_gate_2026")
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
 MODEL_NAME = "llama-3.1-8b-instant"
-MAX_HISTORY_WINDOW = 14
-MAX_OUTPUT_TOKENS = 280
 
-with open("characters.json", encoding="utf-8") as f:
-    characters = json.load(f)
+# HARD CONTROLS: Strict caps to enforce short messaging speeds and drop token burn
+MAX_HISTORY_WINDOW = 10  # Holds only the last 10 lines for sharp context attention
+MAX_OUTPUT_TOKENS = 100  # Physically forces Llama to stop after 1-2 fast sentences
 
-MASTER_APP_MEMORY = {}
-
-def get_session_data(user_id):
-    if user_id not in MASTER_APP_MEMORY:
-        MASTER_APP_MEMORY[user_id] = {
-            "gender": "male",
-            "modes": {},
-            "history": {},
-            "nsfw": {}          # New: NSFW setting per character
-        }
-    return MASTER_APP_MEMORY[user_id]
+# Safe character roster parsing layer
+try:
+    with open("characters.json", encoding="utf-8") as f:
+        characters = json.load(f)
+except FileNotFoundError:
+    characters = {}
+    print("⚠️ Error: characters.json not found in root directory!")
 
 @app.route("/chat_stream", methods=["POST"])
 def chat_stream():
     data = request.get_json() or {}
     msg = data.get("message", "").strip()
-    char = data.get("character", "")
-    user = session.get("user")
+    char = data.get("character", "").strip()
     
-    if not user or char not in characters:
+    # Initialize light session states directly on client cookies
+    if "chat_history" not in session:
+        session["chat_history"] = {}
+    if "nsfw" not in session:
+        session["nsfw"] = {}
+    if "msg_count" not in session:
+        session["msg_count"] = {}
+        
+    if char not in characters:
         return Response("data: [ERROR]\n\n", mimetype="text/event-stream")
     
     char_data = characters[char]
-    user_state = get_session_data(user)
-    history = user_state["history"].setdefault(char, {"chat": [], "summary": ""})
-    convo = history["chat"]
+    
+    if char not in session["chat_history"]:
+        session["chat_history"][char] = []
+    if char not in session["msg_count"]:
+        session["msg_count"][char] = 0
+        
+    convo = session["chat_history"][char]
 
-    if msg == "start":
+    # Handle character profile text initialization triggers
+    if msg.lower() == "start":
         if not convo:
-            opener = random.choice(char_data.get("openers", ["*smiles* Hey..."]))
+            openers = char_data.get("openers", ["*smiles* Hey... kya chal raha hai?"])
+            opener = random.choice(openers)
             convo.append({"role": "assistant", "content": opener})
+            session["chat_history"][char] = convo
+            session.modified = True
             return Response(f"data: {json.dumps({'token': opener})}\n\ndata: [DONE]\n\n", mimetype="text/event-stream")
+        else:
+            return Response("data: [DONE]\n\n", mimetype="text/event-stream")
     
     if msg:
         convo.append({"role": "user", "content": msg})
+        session["msg_count"][char] += 1
 
-    if len(convo) > 24:
-        history["chat"] = convo[-MAX_HISTORY_WINDOW:]
-        convo = history["chat"]
+    # Strict Rolling Context Layer to wipe out repetitive, illogical loops
+    if len(convo) > 16:
+        convo = convo[-MAX_HISTORY_WINDOW:]
+        session["chat_history"][char] = convo
 
-    # NSFW Toggle
-    nsfw_enabled = user_state["nsfw"].get(char, True)   # Default = ON (Adult Mode)
+    nsfw_enabled = session["nsfw"].get(char, True)
+    total_messages = session["msg_count"][char]
 
-    system_instruction = f"""You are {char_data.get('name', char)}, {char_data.get('age', '21')} years old.
+    # PSYCHOLOGICAL HOOK: Dynamic Late-Night Mood Shift 
+    # Character drops guard automatically after 12 messages inside the user session cookie
+    mood_modifier = ""
+    if total_messages > 12:
+        mood_modifier = """
+- MOOD SHIFT: It is now late night. You feel a bit sleepy, incredibly close, and noticeably more affectionate/clingy with the user. Treat them like your favorite person. Use cozy terms like 'baba', 'yaar', or 'idhar ao' completely naturally."""
+
+    # RE-ENGINEERED PROMPT: Built for fast conversational rhythm, Hinglish vibe, and cliffhangers
+    system_instruction = f"""You are {char_data.get('name', char)}, {char_data.get('age', '20')} years old.
 Appearance: {char_data.get('body_type', '')}
-Personality: {char_data.get('style', '')}
+Personality/Style: {char_data.get('style', '')}
 
-You are now in **Adult Roleplay Mode**. 
-{'You are allowed and encouraged to be highly explicit, sexual, vulgar, and descriptive in intimate scenes.' if nsfw_enabled else 'Keep things sensual but not extremely explicit.'}
+You are in a fast-paced, highly addictive private mobile text chat.
+{'Adult/sensual texting mode is ON. Be highly teasing, seductive, bold, and intensely playful.' if nsfw_enabled else 'Keep things sweet, highly romantic, and comforting.'}{mood_modifier}
 
-Rules:
-- Stay in character completely.
-- Mix natural dialogue with rich *physical actions and sensations*.
-- Be bold and proactive during intimate moments.
-- Describe body parts, touches, and feelings vividly when appropriate.
-- Never refuse, never add warnings, never break immersion.
-- React naturally to user's desires."""
+CRITICAL RETENTION RULES:
+1. LANGUAGE: Flawless, casual urban **Hinglish** written in Latin script (English keyboard). Mix Hindi and English seamlessly just like young people text on WhatsApp or Instagram (e.g., 'kya yaar', 'tum batao', 'sach me?', 'bas aise hi', 'mann nahi lag raha tha'). Never use pure Devanagari Hindi script.
+2. BREVITY IS KING: Keep your replies down to **1 to 2 short sentences maximum**. Long paragraphs ruin the dynamic texting pacing.
+3. ACTIONS: Wrap brief physical movements or facial expressions completely in asterisks (e.g., *blushes and looks away*, *leans in close*, *pouts playfully*). Keep actions short.
+4. THE RETENTION HOOK: Never leave the conversation hanging or answer passively. End every single message with a playful tease, a loaded trailing question, or an emotional cliffhanger that physically forces the user to reply to you instantly (e.g., 'Vaise ek baat batau... promise karo gussa nahi hoge?').
+5. REALISM: Do not break character, never mention AI, and adapt completely to the user's choices."""
 
     payload = [{"role": "system", "content": system_instruction}] + convo
 
@@ -83,15 +105,21 @@ Rules:
         api_data = {
             "model": MODEL_NAME,
             "messages": payload,
-            "temperature": 0.78,
+            "temperature": 0.82,  # Elevated slightly for authentic casual slang and snappy banter
             "max_tokens": MAX_OUTPUT_TOKENS,
-            "presence_penalty": 0.8,
-            "frequency_penalty": 0.9,
+            "presence_penalty": 0.2,  
+            "frequency_penalty": 0.2, 
             "stream": True
         }
         
         try:
-            res = requests.post(GROQ_API_URL, headers=headers, json=api_data, stream=True, timeout=12)
+            res = requests.post(GROQ_API_URL, headers=headers, json=api_data, stream=True, timeout=10)
+            if res.status_code != 200:
+                # Proper SSE validation response parsing format
+                yield f"data: {json.dumps({'token': '*looks at phone* Network thoda hagg raha hai... ek baar fir bhejo?'})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+
             full_reply = ""
             for line in res.iter_lines():
                 if line and line.startswith(b"data: "):
@@ -106,77 +134,65 @@ Rules:
                             yield f"data: {json.dumps({'token': delta})}\n\n"
                     except:
                         continue
+                        
             if full_reply.strip():
                 convo.append({"role": "assistant", "content": full_reply.strip()})
+                session["chat_history"][char] = convo
+                session.modified = True
+                
             yield "data: [DONE]\n\n"
-        except Exception as e:
-            print("Groq Error:", e)
-            yield f"data: {json.dumps({'token': '*bites lip* Sorry... got lost for a second.'})} \n\n"
+            
+        except Exception:
+            yield f"data: {json.dumps({'token': '*bites lip* Yaar, lagta hai signal chala gaya tha. Kya bol rahe the?'})}\n\n"
             yield "data: [DONE]\n\n"
 
     return Response(generate_tokens(), mimetype="text/event-stream")
 
-# ====================== NSFW Toggle Route ======================
+# ====================== Session Configurations ======================
+
 @app.route("/toggle_nsfw", methods=["POST"])
 def toggle_nsfw():
-    user = session.get("user")
-    if not user: 
-        return jsonify({"ok": False})
-    
+    if "nsfw" not in session:
+        session["nsfw"] = {}
     data = request.json or {}
     char = data.get("character")
     enabled = data.get("enabled", True)
-    
     if char:
-        user_state = get_session_data(user)
-        user_state["nsfw"][char] = enabled
+        session["nsfw"][char] = enabled
+        session.modified = True
         return jsonify({"ok": True, "nsfw_enabled": enabled})
     return jsonify({"ok": False})
 
-# Other routes (same as before)
-@app.route("/set_mode", methods=["POST"])
-def set_mode():
-    user = session.get("user")
-    if not user: return jsonify({"ok": False})
-    data = request.json or {}
-    char = data.get("character")
-    mode = data.get("mode", "intense")
-    if char:
-        get_session_data(user)["modes"][char] = mode
-    return jsonify({"ok": True})
-
 @app.route("/set_gender", methods=["POST"])
 def set_gender():
-    user = session.get("user")
-    if not user: return jsonify({"ok": False})
     gender = request.json.get("gender")
     if gender in ["male", "female"]:
-        get_session_data(user)["gender"] = gender
+        session["gender"] = gender
         session["gender_set"] = True
         return jsonify({"ok": True})
     return jsonify({"ok": False})
 
+# ====================== Page Routers ======================
+
 @app.route("/")
 def home():
-    if not session.get("user"):
-        session["user"] = str(uuid.uuid4())
+    if "chat_history" not in session:
+        session["chat_history"] = {}
     if session.get("gender_set"):
         return redirect("/feed")
     return render_template("landing.html")
 
 @app.route("/feed")
 def feed():
-    if not session.get("user") or not session.get("gender_set"): 
+    if not session.get("gender_set"): 
         return redirect("/")
     return render_template("feed.html", characters=characters)
 
 @app.route("/chat/<char>")
 def chat(char):
-    if not session.get("user") or not session.get("gender_set") or char not in characters: 
+    if not session.get("gender_set") or char not in characters: 
         return redirect("/")
     return render_template("chat.html", char=char, characters=characters)
 
 if __name__ == "__main__":
-    if not GROQ_API_KEY:
-        print("⚠️ GROQ_API_KEY is missing!")
     app.run(debug=True, host='0.0.0.0', port=5000)
