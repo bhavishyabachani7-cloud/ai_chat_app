@@ -40,7 +40,9 @@ async function sendMsg(initialRun = false) {
     isWaitingForBot = true;
     if(typingIndicator) typingIndicator.style.display = "flex";
     msgInput.setAttribute("disabled", "true");
-    msgInput.placeholder = `${CHARACTER} is typing...`;
+    
+    // Explicit localized typing indicator context string mappings
+    msgInput.placeholder = currentLang === "hindi" ? `${CHARACTER} टाइप कर रही है...` : `${CHARACTER} is typing...`;
     scrollToBottom();
 
     const messageContainer = document.createElement("div");
@@ -59,7 +61,12 @@ async function sendMsg(initialRun = false) {
         const response = await fetch("/chat_stream", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ message: currentMessageText, character: CHARACTER })
+            // CRITICAL FIX: Explicitly passes the current UI HUD language parameter back up to the backend loop execution
+            body: JSON.stringify({ 
+                message: currentMessageText, 
+                character: CHARACTER,
+                user_lang: currentLang 
+            })
         });
 
         if(typingIndicator) typingIndicator.style.display = "none";
@@ -95,12 +102,12 @@ async function sendMsg(initialRun = false) {
     } catch (error) {
         console.error(error);
         if(typingIndicator) typingIndicator.style.display = "none";
-        textBubble.innerHTML = "*Connection issue... try again*";
+        textBubble.innerHTML = currentLang === "hindi" ? "*नेटवर्क कनेक्शन की समस्या... पुनः प्रयास करें*" : "*Connection issue... try again*";
     }
 
     isWaitingForBot = false;
     msgInput.removeAttribute("disabled");
-    msgInput.placeholder = "Type an action or reply here...";
+    msgInput.placeholder = currentLang === "hindi" ? "यहाँ संदेश या अपनी कोई हरकत लिखें..." : "Type an action or reply here...";
     msgInput.focus();
     scrollToBottom();
 }
