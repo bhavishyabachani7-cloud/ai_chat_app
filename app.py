@@ -94,6 +94,18 @@ def home():
     """Serves your landing page interface view."""
     return render_template("landing.html")
 
+@app.route("/set_gender", methods=["POST"])
+def set_gender():
+    """Captures user gender payload from landing page to initialize session states."""
+    data = request.get_json() or {}
+    gender = data.get("gender")
+    
+    if gender in ["male", "female"]:
+        # Returns a success token so your frontend JavaScript can redirect to /feed
+        return jsonify({"ok": True, "gender": gender})
+        
+    return jsonify({"ok": False, "error": "Invalid gender value choice."}), 400
+
 @app.route("/feed")
 def feed():
     """Renders the dashboard array character selection card sheet."""
