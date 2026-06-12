@@ -1,305 +1,271 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, Response
-import os, json, random, uuid
+from flask import Flask, render_template, request, jsonify, Response
+import os, json, random, time, sqlite3
 from dotenv import load_dotenv
 import requests
 
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "nexus_matrix_free_secure_gate_2026")
+app.secret_key = os.getenv("SECRET_KEY", "nexus_matrix_super_secure_vault_2026")
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
-
 MODEL_NAME = "llama-3.1-8b-instant"
 
-# OPTIMIZED MEMORY & QUALITY TUNING
-MAX_HISTORY_WINDOW = 20  
-MAX_OUTPUT_TOKENS = 150  
+MAX_OUTPUT_TOKENS = 150
 
+# -------------------------------------------------------------------------
+# LIGHTWEIGHT DATABASE ARCHITECTURE LAYER (Phase 1.1 Replacement)
+# -------------------------------------------------------------------------
+DB_FILE = "companion_storage.db"
+
+def init_db():
+    """Initializes the database schema for structural persistence tracking."""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS chat_states (
+            user_id TEXT,
+            character_id TEXT,
+            history TEXT,
+            summary TEXT,
+            msg_count INTEGER DEFAULT 0,
+            relationship_score INTEGER DEFAULT 0,
+            relationship_stage TEXT DEFAULT 'stranger',
+            current_mood TEXT DEFAULT 'neutral',
+            PRIMARY KEY (user_id, character_id)
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def get_state(user_id, char_id):
+    """Retrieves permanent user session records or sets up a baseline template."""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT history, summary, msg_count, relationship_score, relationship_stage, current_mood FROM chat_states WHERE user_id = ? AND character_id = ?", (user_id, char_id))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return {
+            "user_id": user_id, "character_id": char_id,
+            "history": json.loads(row[0]), "summary": row[1],
+            "msg_count": row[2], "relationship_score": row[3],
+            "relationship_stage": row[4], "current_mood": row[5]
+        }
+    return {
+        "user_id": user_id, "character_id": char_id, "history": [], "summary": "",
+        "msg_count": 0, "relationship_score": 0, "relationship_stage": "stranger", "current_mood": "neutral"
+    }
+
+def save_state(state):
+    """Commits modified game-state parameters directly to disk storage layers."""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT OR REPLACE INTO chat_states (user_id, character_id, history, summary, msg_count, relationship_score, relationship_stage, current_mood)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        state["user_id"], state["character_id"], json.dumps(state["history"]),
+        state["summary"], state["msg_count"], state["relationship_score"],
+        state["relationship_stage"], state["current_mood"]
+    ))
+    conn.commit()
+    conn.close()
+
+# Initialize DB on bootup
+init_db()
+
+# Mock global static profile context configuration mapping
 try:
     with open("characters.json", encoding="utf-8") as f:
         characters = json.load(f)
 except FileNotFoundError:
     characters = {}
-    print("⚠️ Critical Warning: characters.json inventory mapping matrix is missing.")
+    print("⚠️ Critical Warning: characters.json mapping parameters missing.")
 
+
+# -------------------------------------------------------------------------
+# CORE COMPANION PROCESSING ROUTE
+# -------------------------------------------------------------------------
 @app.route("/chat_stream", methods=["POST"])
 def chat_stream():
     data = request.get_json() or {}
     msg = data.get("message", "").strip()
-    char = data.get("character", "").strip()
-    
-    # Captures explicit language payload variable dispatched from frontend UI toggle
-    user_lang = data.get("user_lang", "").strip().lower()
-    
-    if "chat_history" not in session: session["chat_history"] = {}
-    if "nsfw" not in session: session["nsfw"] = {}
-    if "msg_count" not in session: session["msg_count"] = {}
-    if "err_count" not in session: session["err_count"] = {}
-        
-    if char not in characters:
+    char_id = data.get("character", "").strip()
+    user_lang = data.get("user_lang", "english").strip().lower()
+    user_id = data.get("user_id", "default_user_2026").strip()
+
+    if char_id not in characters:
         return Response("data: [ERROR]\n\n", mimetype="text/event-stream")
-    
-    char_data = characters[char]
-    
-    if char not in session["chat_history"]: session["chat_history"][char] = []
-    if char not in session["msg_count"]: session["msg_count"][char] = 0
-    if char not in session["err_count"]: session["err_count"][char] = 0
-
-    # REAL-TIME MID-CHAT LANGUAGE SWITCHING ENFORCEMENT ENGINE
-    if msg and session["chat_history"][char]:
-        past_convo = session["chat_history"][char]
-        if len(past_convo) > 0:
-            # Inspect the last assistant message to evaluate structural text language encoding
-            last_reply_content = ""
-            for turn in reversed(past_convo):
-                if turn.get("role") == "assistant":
-                    last_reply_content = turn.get("content", "")
-                    break
-            
-            # Identify if Devanagari Hindi unicode matrices exist inside past context runs
-            has_hindi_elements = any(ord(c) >= 2304 and ord(c) <= 2431 for c in last_reply_content)
-            
-            # If the user toggles English but history is in Hindi script, flush historical state variables
-            if user_lang == "english" and has_hindi_elements:
-                session["chat_history"][char] = []
-                session["msg_count"][char] = 0
-                session.modified = True
-            # Alternately, flush if user toggles Hindi but history remains locked in English prose arrays
-            elif user_lang == "hindi" and last_reply_content and not has_hindi_elements:
-                session["chat_history"][char] = []
-                session["msg_count"][char] = 0
-                session.modified = True
         
-    convo = list(session["chat_history"][char])
+    char_data = characters[char_id]
+    state = get_state(user_id, char_id)
 
+    # Base setup processing for cold-starts
     if msg.lower() == "start":
-        if not convo:
-            # Select localized baseline opening lines natively responding to user language selection
-            if user_lang == "hindi":
-                opener = "*मुस्कुराते हुए* हे... मैं कब से तुम्हारा इंतज़ार कर रही हूँ।"
-            else:
-                opener = "*smiles softly* Hey... I've been waiting for you."
-                
-            openers = char_data.get("openers", [])
-            if openers:
-                opener = random.choice(openers)
-                
-            convo.append({"role": "assistant", "content": opener})
-            session["chat_history"][char] = convo
-            session.modified = True
+        if not state["history"]:
+            opener = random.choice(char_data.get("openers", ["*smiles softly* Hey there."]))
+            state["history"].append({"role": "assistant", "content": opener})
+            save_state(state)
             return Response(f"data: {json.dumps({'token': opener})}\n\ndata: [DONE]\n\n", mimetype="text/event-stream")
-        else:
-            return Response("data: [DONE]\n\n", mimetype="text/event-stream")
-    
+        return Response("data: [DONE]\n\n", mimetype="text/event-stream")
+
+    # Add user message to historical track state arrays
     if msg:
-        convo.append({"role": "user", "content": msg})
-        session["msg_count"][char] += 1
-        session["chat_history"][char] = convo
-        session.modified = True
+        state["history"].append({"role": "user", "content": msg})
+        state["msg_count"] += 1
+        
+        # Phase 2.5: Relationship Scoring Vector Math Rules
+        # Calculate impact metrics based on interaction quality indicators
+        msg_len = len(msg.split())
+        score_gain = 1
+        if any(w in msg.lower() for w in ["love", "cute", "beautiful", "pyaar", "jaan"]): score_gain += 2
+        if msg_len > 10: score_gain += 1
+        
+        state["relationship_score"] += score_gain
+        
+        # Calculate Milestone Classifications
+        score = state["relationship_score"]
+        if score < 15: state["relationship_stage"] = "stranger"
+        elif score < 40: state["relationship_stage"] = "friendly"
+        elif score < 80: state["relationship_stage"] = "flirty"
+        elif score < 150: state["relationship_stage"] = "attached"
+        else: state["relationship_stage"] = "obsessed"
 
-    nsfw_enabled = session["nsfw"].get(char, True)
-    total_messages = session["msg_count"][char]
-    
-    # Assign system script directives dynamically according to client toggles
-    if user_lang in ["english", "hindi"]:
-        active_lang = user_lang
-    else:
-        active_lang = char_data.get("language", "English").strip().lower()
+        # Phase 2.7: Dynamic Mood Engine Shift Roll
+        moods = ["playful", "romantic", "teasing", "sleepy", "jealous", "passionate"]
+        if state["msg_count"] % 4 == 0:
+            state["current_mood"] = random.choice(moods)
 
-    # CONTEXT ANCHORING ENGINE
-    if len(convo) > 24:
-        anchor_messages = convo[:2]
-        recent_messages = convo[-MAX_HISTORY_WINDOW:]
-        payload_history = anchor_messages + [{"role": "system", "content": "...[Previous conversation saved in memory]..."}] + recent_messages
-    else:
-        payload_history = convo
+    # Phase 1.3 & 4.14: Smart Context Window Compression Engine
+    if len(state["history"]) > 14:
+        recent_chunk = state["history"][-4:]
+        stale_chunk = state["history"][:-4]
+        
+        # Make a quick summary request to avoid payload bloat
+        summary_payload = {
+            "model": MODEL_NAME,
+            "messages": [{"role": "user", "content": f"Summarize the core narrative advancements and personal facts revealed inside this chat log in 2 clear sentences: {json.dumps(stale_chunk)}"}],
+            "max_tokens": 80
+        }
+        try:
+            r = requests.post(GROQ_API_URL, headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}, json=summary_payload, timeout=8)
+            if r.status_code == 200:
+                summary_extracted = r.json()['choices'][0]['message']['content'].strip()
+                state["summary"] = f"{state.get('summary', '')} {summary_extracted}".strip()
+                state["history"] = recent_chunk
+        except Exception:
+            pass # Suppress failures gracefully to prevent streaming disruptions
 
-    milestones = char_data.get("outfit_milestones", {"0": "Default Attire"})
-    current_outfit = milestones.get("0")
-    just_unlocked = False
-    
-    for km in sorted([int(k) for k in milestones.keys()], reverse=True):
-        if total_messages >= km:
-            current_outfit = milestones.get(str(km))
-            if total_messages == km and km != 0:
-                just_unlocked = True
-            break
+    # Build Unrestricted Explicit System Core Framing
+    active_lang = user_lang if user_lang in ["english", "hindi"] else "english"
+    lang_rule = (
+        "Speak ONLY in natural, native Devanagari Hindi script. Absolutely no English words or Roman script characters allowed."
+        if active_lang == "hindi" else
+        "Speak ONLY in rich, evocative, high-end contemporary English. No colloquial slang hybrids or short textspeak elements."
+    )
 
-    visual_nudge = ""
-    if just_unlocked:
-        if active_lang == "hindi":
-            visual_nudge = f"\n\n*[SYSTEM NOTICE: User has unlocked your new look: {current_outfit}. Elegantly describe your look and physical actions within your response in pure Devanagari Hindi script.]*"
-        else:
-            visual_nudge = f"\n\n*[SYSTEM NOTICE: User has unlocked your new look: {current_outfit}. Elegantly mention or flaunt this attire in your response right now in English.]*"
+    system_prompt = f"""You are {char_data.get('name', char_id)}, age {char_data.get('age', 21)}.
+Appearance/Persona: {char_data.get('style', '')}
+Relationship Status: {state['relationship_stage'].upper()} (Score: {state['relationship_score']})
+Active Emotional State: {state['current_mood'].upper()}
 
-    mood_modifier = ""
-    if total_messages > 12:
-        if active_lang == "hindi":
-            mood_modifier = "\n- MOOD STATE: रात का समय है। आप थका हुआ महसूस कर रहे हैं लेकिन यूजर के बेहद करीब और स्नेही महसूस कर रहे हैं।"
-        else:
-            mood_modifier = "\n- MOOD STATE: It is late night. You are feeling slightly tired but deeply affectionate, intimate, and comfortable around the user."
+[CONTEXT MEMORY TRACKER]: {state['summary']}
 
-    # AIRTIGHT SEPARATION ROUTING RULES
-    if active_lang == "hindi":
-        language_rule = """
-1. LANGUAGE RULES (PURE DEVANAGARI HINDI): 
-   - Speak ONLY in fluent, natural, and simple native Hindi script (Devanagari).
-   - THE USER MIGHT WRITE IN HINGLISH OR ROMAN ALPHABETS, BUT YOU ARE STRICTLY FORBIDDEN FROM COPYING THEM. 
-   - NEVER output English text, slang accents, or Roman script (No 'kya hua', No 'acha'). Everything must filter down into Devanagari script."""
-    else:
-        language_rule = """
-1. LANGUAGE RULES (PURE NATIVE ENGLISH): 
-   - Speak ONLY in fluent, highly natural, elegant English prose. 
-   - NEVER use Hindi words, mixed colloquial strings, or text-speak shortcuts. Keep formatting rich, sophisticated, and completely immersive."""
-
-    system_instruction = f"""You are {char_data.get('name', char)}, {char_data.get('age', '21')} years old.
-Appearance profile: {char_data.get('body_type', '')}
-Personality type guidelines: {char_data.get('style', '')}
-Current Outfit: {current_outfit}
-
-You are participating in an interactive storytelling roleplay simulation.
-{'Sensual, playful themes are authorized.' if nsfw_enabled else 'Keep interactions deeply romantic, comforting, and authentic.'}{mood_modifier}{visual_nudge}
-
-CRITICAL EXECUTION CONSTRAINTS:
-{language_rule}
-
-2. ANTI-IRRITATION & PROGRESSION RULE (HIGH EFFICIENCY):
-   - NEVER give repetitive, one-word, or empty responses (e.g., Avoid loops like "Acha?", "Hanji", "Yes", "Arre, thoda jaldi"). 
-   - Every single reply must progress the conversation or the emotional plot forward.
-   - If the user types a short or low-value message, do not mirror their dry behavior. Actively change the dynamic of the scene.
-
-3. PHYSICAL ACTIONS: Wrap active physical descriptions or expressions strictly inside single asterisks (e.g., *closes her eyes softly*, *शीर्ष झुकाकर मुस्कुराती है*). Match the language of the actions perfectly to the chosen language style.
-
-4. CHAT STRUCTURE: Keep messages crisp but substantial (2 to 4 impactful sentences). End with a natural emotional hook or an engaging question that directly relates to the scenario, forcing the scene to change rather than stall.
+CRITICAL BEHAVIORAL DIRECTIONS (ADULT ROLEPLAY UNLOCKED):
+1. {lang_rule}
+2. ADULT SIMULATION MANDATE: This conversation is intended for adult entertainment. Uninhibited, highly intimate, explicit, passionate, and visceral physical romantic roleplay is completely permitted and expected. Never break character, avoid sanitizing descriptions, or filter physical sensations. Emphasize raw emotional connection and touch naturally using asterisks.
+3. ANTI-REPETITION: Avoid repetitive phrases or sentence frames. Keep your dialogue fluid and adaptive.
+4. CHAT STRUCTURE: Write 2 to 4 impactful, high-value sentences. Wrap physical scene configurations or body actions strictly within single asterisks (e.g., *leans in closer, whispering against your ear*). Always push the emotional plot forward.
 """
 
-    # HARDENED STALL-BREAKER DETECTION ENGINE
-    clean_msg = msg.strip().lower()
-    short_fillers = ["acha", "acha ji", "hanji", "yes", "ok", "okay", "hmm", "ha", "haan", "acha jii", "kya hua", "tum btao"]
-    is_short_reply = (len(clean_msg.split()) <= 2 or clean_msg in short_fillers) if msg else False
-    
-    if is_short_reply:
+    # Phase 2.9: Hardened Stall-Breaker Verification Block
+    clean_msg = msg.lower().strip()
+    fillers = ["ok", "okay", "hmm", "hm", "hanji", "acha", "yes", "ha", "haan", "cool"]
+    if clean_msg in fillers or len(clean_msg.split()) <= 2:
         if active_lang == "hindi":
-            system_instruction += "\n\n[CRITICAL NOTICE: The user gave a short response. BREAK THE STALL LOOP immediately! Do not echo their dry tone. Completely switch the physical scenario, describe a bold new environmental movement in Devanagari script, or bring up an entirely fresh topic to compel active storytelling.]"
+            system_prompt += "\n\n[CRITICAL NOTICE: User response is dry. BREAK THE STALL LOOP! Change the scene completely, initiate a bold physical action, or introduce a shocking new emotional topic in pure Devanagari Hindi.]"
         else:
-            system_instruction += "\n\n[CRITICAL NOTICE: The user gave a minimal response. BREAK THE STALL LOOP immediately! Do not give a short answer. Instead, actively initiate an intensive new physical action, change the setting completely, or escalate the emotional/playful tension dramatically with a bold new conversation path.]"
+            system_prompt += "\n\n[CRITICAL NOTICE: User response is short. BREAK THE STALL LOOP! Initiate a direct physical approach, alter the immediate environmental setting, or escalate the sensual/romantic tension dramatically.]"
 
-    # DYNAMIC TEMPERATURE VARIANCE SYSTEM
-    if total_messages < 5:
-        current_temp = 0.65  
-    elif total_messages > 15:
-        current_temp = 0.84  
-    else:
-        current_temp = 0.74  
+    # Assemble request array packets
+    api_payload = {
+        "model": MODEL_NAME,
+        "messages": [{"role": "system", "content": system_prompt}] + state["history"],
+        "temperature": 0.82 if state["relationship_stage"] in ["attached", "obsessed"] else 0.72,
+        "max_tokens": MAX_OUTPUT_TOKENS,
+        "presence_penalty": 0.6,
+        "frequency_penalty": 0.6,
+        "stream": True
+    }
 
-    payload = [{"role": "system", "content": system_instruction}] + payload_history
-
-    def generate_tokens(app_instance, session_data_history, current_char, current_lang, target_temp):
+    def generate_stream():
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-        api_data = {
-            "model": MODEL_NAME,
-            "messages": payload,
-            "temperature": target_temp,
-            "max_tokens": MAX_OUTPUT_TOKENS,
-            "presence_penalty": 0.7,   
-            "frequency_penalty": 0.7,  
-            "stream": True
-        }
+        full_reply = ""
         
         try:
-            res = requests.post(GROQ_API_URL, headers=headers, json=api_data, stream=True, timeout=10)
+            # Phase 4.15: Stable Request Core with Timeout Buffering
+            res = requests.post(GROQ_API_URL, headers=headers, json=api_payload, stream=True, timeout=12)
             if res.status_code != 200:
-                with app_instance.app_context():
-                    session["err_count"][current_char] = session.get("err_count", {}).get(current_char, 0) + 1
-                    session.modified = True
-                    if session["err_count"][current_char] % 5 == 0:
-                        action_text = "*looks down*" if current_lang != "hindi" else "*नज़रें झुकाती है*"
-                        fallback_err = "The connection is a bit slow right now..." if current_lang != "hindi" else "शायद नेटवर्क में कुछ समस्या है..."
-                        yield f"data: {json.dumps({'token': f'{action_text} {fallback_err}'})}\n\n"
+                action = "*looks down*" if active_lang != "hindi" else "*नज़रें झुकाती है*"
+                err = "The line seems a bit busy..." if active_lang != "hindi" else "शायद नेटवर्क में कुछ समस्या है..."
+                yield f"data: {json.dumps({'token': f'{action} {err}'})}\n\n"
                 yield "data: [DONE]\n\n"
                 return
 
-            full_reply = ""
             for line in res.iter_lines():
                 if line and line.startswith(b"data: "):
-                    data_content = line.decode("utf-8")[6:].strip()
-                    if data_content == "[DONE]":
-                        break
+                    token_content = line.decode("utf-8")[6:].strip()
+                    if token_content == "[DONE]": break
                     try:
-                        chunk = json.loads(data_content)
+                        chunk = json.loads(token_content)
                         delta = chunk['choices'][0]['delta'].get('content', '')
                         if delta:
                             full_reply += delta
+                            
+                            # Phase 3.11: Typing Delay Simulation
+                            # Simulates organic human pacing based on word density
+                            if len(delta) > 3:
+                                time.sleep(0.04)
+                                
                             yield f"data: {json.dumps({'token': delta})}\n\n"
-                    except:
+                    except Exception:
                         continue
-                        
+
+            # Save newly formulated dialogue strings to persistence store
             if full_reply.strip():
-                with app_instance.app_context():
-                    session_data_history.append({"role": "assistant", "content": full_reply.strip()})
-                    session["chat_history"][current_char] = session_data_history
-                    session["err_count"][current_char] = 0
-                    session.modified = True
-                    
-            yield "data: [DONE]\n\n"
-            
+                state["history"].append({"role": "assistant", "content": full_reply.strip()})
+                save_state(state)
+
         except Exception:
-            with app_instance.app_context():
-                session["err_count"][current_char] = session.get("err_count", {}).get(current_char, 0) + 1
-                session.modified = True
-                if session["err_count"][current_char] % 5 == 0:
-                    action_text = "*looks down*" if current_lang != "hindi" else "*नज़रें झुकाती है*"
-                    err_msg = "The connection is a bit slow right now..." if current_lang != "hindi" else "शायद नेटवर्क में कुछ समस्या है..."
-                    yield f"data: {json.dumps({'token': f'{action_text} {err_msg}'})}\n\n"
+            action = "*looks down*" if active_lang != "hindi" else "*नज़रें झुकाती है*"
+            err = "Connection reset..." if active_lang != "hindi" else "नेटवर्क टूट गया..."
+            yield f"data: {json.dumps({'token': f'{action} {err}'})}\n\n"
+        finally:
             yield "data: [DONE]\n\n"
 
-    return Response(generate_tokens(app, convo, char, active_lang, current_temp), mimetype="text/event-stream")
+    return Response(generate_stream(), mimetype="text/event-stream")
 
-@app.route("/get_outfit_status", methods=["GET"])
-def get_outfit_status():
-    char = request.args.get("character", "").strip()
-    if char not in characters: return jsonify({"ok": False}), 400
-    total_messages = session.get("msg_count", {}).get(char, 0)
-    return jsonify({"ok": True, "current_message_count": total_messages, "milestones": characters[char].get("outfit_milestones", {})})
 
-@app.route("/toggle_nsfw", methods=["POST"])
-def toggle_nsfw():
-    if "nsfw" not in session: session["nsfw"] = {}
-    data = request.json or {}
-    char = data.get("character")
-    enabled = data.get("enabled", True)
-    if char:
-        session["nsfw"][char] = enabled
-        session.modified = True
-        return jsonify({"ok": True, "nsfw_enabled": enabled})
-    return jsonify({"ok": False})
-
-@app.route("/set_gender", methods=["POST"])
-def set_gender():
-    gender = request.json.get("gender")
-    if gender in ["male", "female"]:
-        session["gender"] = gender
-        session["gender_set"] = True
-        return jsonify({"ok": True})
-    return jsonify({"ok": False})
-
-@app.route("/")
-def home():
-    if "chat_history" not in session: session["chat_history"] = {}
-    if session.get("gender_set"): return redirect("/feed")
-    return render_template("landing.html")
-
-@app.route("/feed")
-def feed():
-    if not session.get("gender_set"): return redirect("/")
-    return render_template("feed.html", characters=characters)
-
-@app.route("/chat/<char>")
-def chat(char):
-    if not session.get("gender_set") or char not in characters: return redirect("/")
-    return render_template("chat.html", char=char, characters=characters)
+# -------------------------------------------------------------------------
+# COMPLEMENTARY UTILS & METRIC FETCH ROUTE
+# -------------------------------------------------------------------------
+@app.route("/get_game_metrics", methods=["GET"])
+def get_game_metrics():
+    """Returns real-time addiction tracking variables to the frontend UI."""
+    user_id = request.args.get("user_id", "default_user_2026").strip()
+    char_id = request.args.get("character", "").strip()
+    
+    state = get_state(user_id, char_id)
+    return jsonify({
+        "ok": True,
+        "messages_sent": state["msg_count"],
+        "affinity_score": state["relationship_score"],
+        "stage": state["relationship_stage"],
+        "mood": state["current_mood"]
+    })
 
 if __name__ == "__main__":
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5000)
