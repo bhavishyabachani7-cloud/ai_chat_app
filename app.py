@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, Response
+from flask import Flask, render_template, request, jsonify, Response, redirect
 import os, json, random, time, sqlite3
 from dotenv import load_dotenv
 import requests
@@ -87,6 +87,27 @@ except FileNotFoundError:
 
 
 # -------------------------------------------------------------------------
+# FRONTEND UI PAGE ROUTING LAYERS (Fixed 404 Errors)
+# -------------------------------------------------------------------------
+@app.route("/")
+def home():
+    """Serves your landing page interface view."""
+    return render_template("landing.html")
+
+@app.route("/feed")
+def feed():
+    """Renders the dashboard array character selection card sheet."""
+    return render_template("feed.html", characters=characters)
+
+@app.route("/chat/<char>")
+def chat(char):
+    """Opens the dedicated conversational interface workspace for a chosen profile."""
+    if char not in characters:
+        return redirect("/feed")
+    return render_template("chat.html", char=char, characters=characters)
+
+
+# -------------------------------------------------------------------------
 # CORE COMPANION PROCESSING ROUTE
 # -------------------------------------------------------------------------
 @app.route("/chat_stream", methods=["POST"])
@@ -118,7 +139,6 @@ def chat_stream():
         state["msg_count"] += 1
         
         # Phase 2.5: Relationship Scoring Vector Math Rules
-        # Calculate impact metrics based on interaction quality indicators
         msg_len = len(msg.split())
         score_gain = 1
         if any(w in msg.lower() for w in ["love", "cute", "beautiful", "pyaar", "jaan"]): score_gain += 2
@@ -144,7 +164,6 @@ def chat_stream():
         recent_chunk = state["history"][-4:]
         stale_chunk = state["history"][:-4]
         
-        # Make a quick summary request to avoid payload bloat
         summary_payload = {
             "model": MODEL_NAME,
             "messages": [{"role": "user", "content": f"Summarize the core narrative advancements and personal facts revealed inside this chat log in 2 clear sentences: {json.dumps(stale_chunk)}"}],
@@ -157,7 +176,7 @@ def chat_stream():
                 state["summary"] = f"{state.get('summary', '')} {summary_extracted}".strip()
                 state["history"] = recent_chunk
         except Exception:
-            pass # Suppress failures gracefully to prevent streaming disruptions
+            pass 
 
     # Build Unrestricted Explicit System Core Framing
     active_lang = user_lang if user_lang in ["english", "hindi"] else "english"
@@ -206,7 +225,6 @@ CRITICAL BEHAVIORAL DIRECTIONS (ADULT ROLEPLAY UNLOCKED):
         full_reply = ""
         
         try:
-            # Phase 4.15: Stable Request Core with Timeout Buffering
             res = requests.post(GROQ_API_URL, headers=headers, json=api_payload, stream=True, timeout=12)
             if res.status_code != 200:
                 action = "*looks down*" if active_lang != "hindi" else "*नज़रें झुकाती है*"
@@ -224,17 +242,12 @@ CRITICAL BEHAVIORAL DIRECTIONS (ADULT ROLEPLAY UNLOCKED):
                         delta = chunk['choices'][0]['delta'].get('content', '')
                         if delta:
                             full_reply += delta
-                            
-                            # Phase 3.11: Typing Delay Simulation
-                            # Simulates organic human pacing based on word density
                             if len(delta) > 3:
                                 time.sleep(0.04)
-                                
                             yield f"data: {json.dumps({'token': delta})}\n\n"
                     except Exception:
                         continue
 
-            # Save newly formulated dialogue strings to persistence store
             if full_reply.strip():
                 state["history"].append({"role": "assistant", "content": full_reply.strip()})
                 save_state(state)
