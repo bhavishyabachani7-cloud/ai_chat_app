@@ -142,7 +142,13 @@ def chat_stream():
             opener = random.choice(char_data.get("openers", ["*smiles softly* Hey there."]))
             state["history"].append({"role": "assistant", "content": opener})
             save_state(state)
-            return Response(f"data: {json.dumps({'token': opener})}\n\ndata: [DONE]\n\n", mimetype="text/event-stream")
+            
+            # FIXED: Correct separation formatting for structured stream packets
+            return Response(
+                f"data: {json.dumps({'token': opener})}\n\n"
+                f"data: [DONE]\n\n", 
+                mimetype="text/event-stream"
+            )
         return Response("data: [DONE]\n\n", mimetype="text/event-stream")
 
     # Add user message to historical track state arrays
