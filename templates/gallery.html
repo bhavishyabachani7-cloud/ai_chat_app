@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ char }} - Outfit Vault</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+            gap: 24px;
+            padding: 0 40px 60px;
+            max-width: 1250px;
+            margin: 0 auto;
+        }
+        .gallery-card {
+            border-radius: 22px;
+            overflow: hidden;
+            position: relative;
+            background: rgba(22, 22, 34, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s;
+        }
+        .gallery-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(124, 58, 237, 0.5);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5), 0 0 20px rgba(124,58,237,0.15);
+        }
+        .gallery-card.locked-card {
+            cursor: not-allowed;
+        }
+        .gallery-card.locked-card:hover {
+            transform: none;
+            border-color: rgba(255, 255, 255, 0.05);
+            box-shadow: none;
+        }
+        .gallery-img-holder {
+            width: 100%;
+            height: 350px;
+            background: radial-gradient(circle at 50% 50%, #161426, #0c0b12);
+            position: relative;
+            overflow: hidden;
+        }
+        .milestone-badge {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            z-index: 2;
+        }
+        .lock-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(10, 10, 15, 0.75);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            color: #a5b4fc;
+            font-weight: 600;
+            font-size: 15px;
+            z-index: 3;
+        }
+        .lock-icon {
+            font-size: 28px;
+        }
+        .gallery-info {
+            padding: 22px;
+        }
+        .gallery-info h4 {
+            font-size: 12px;
+            color: #a5b4fc;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+        .gallery-info p {
+            font-size: 14px;
+            color: #d1d5db;
+            line-height: 1.6;
+        }
+        .lightbox-modal {
+            display: none;
+            position: fixed;
+            z-index: 200;
+            inset: 0;
+            background: rgba(4, 4, 6, 0.96);
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .lightbox-content {
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+            animation: containerGlance 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .lightbox-card {
+            border-radius: 30px;
+            padding: 30px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .lightbox-preview-box {
+            width: 100%;
+            height: 420px;
+            border-radius: 18px;
+            background: #0d0d12;
+            margin-bottom: 22px;
+            border: 1px solid rgba(255,255,255,0.03);
+            overflow: hidden;
+        }
+        .lightbox-close {
+            position: absolute;
+            top: 25px;
+            right: 30px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: #a1a1aa;
+            font-size: 24px;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .lightbox-close:hover {
+            color: #fff;
+            background: rgba(255,255,255,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="feed-header">
+        <h2>{{ char }} — Vault Matrix</h2>
+        <span>Progress through milestone affinity tracks to see character look adaptations.</span>
+        <div style="margin-top: 18px;">
+            <a id="back-to-session-btn" href="/chat/{{ char }}" class="back-feed-btn">← Return to Session</a>
+        </div>
+    </div>
+
+    <div class="gallery-grid">
+        {% for score_str, description in character.outfit_milestones.items() %}
+        {% set score_needed = score_str | int %}
+        {% set is_unlocked = current_score >= score_needed %}
+        {% set milestone_image = character.image.replace('.png', '') + '_' + score_str + '.png' %}
+        
+        <div class="gallery-card {% if not is_unlocked %}locked-card{% endif %}" 
+             {% if is_unlocked %}onclick="openLightbox('{{ score_str }}', '{{ description }}', '{{ milestone_image }}')"{% endif %}>
+            
+            <div class="gallery-img-holder">
+                <span class="milestone-badge">Affinity Target: {{ score_str }}+</span>
+                
+                {% if not is_unlocked %}
+                <div class="lock-overlay">
+                    <span class="lock-icon">🔒</span>
+                    <span>Locked (Requires {{ score_needed }} Score)</span>
+                </div>
+                {% endif %}
+                
+                <img src="{{ url_for('static', filename=milestone_image) }}" 
+                     alt="Milestone {{ score_str }}" 
+                     style="width: 100%; height: 100%; object-fit: cover;"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                
+                <div style="display:none; width:100%; height:100%; align-items:center; justify-content:center; color:rgba(255,255,255,0.15); font-size:12px; font-style:italic; text-align: center; padding: 20px;">
+                    📷 Image Node Missing<br>({{ milestone_image }})
+                </div>
+            </div>
+            
+            <div class="gallery-info">
+                <h4>Vault Unlock Profile</h4>
+                {% if is_unlocked %}
+                <p>{{ description[:70] }}...</p>
+                {% else %}
+                <p style="color: rgba(255,255,255,0.2); font-style: italic;">Keep chatting to unveil this confidential outfit adaptation profile tracker...</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div id="lightbox" class="lightbox-modal" onclick="closeLightbox()">
+        <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+        <div class="lightbox-content" onclick="event.stopPropagation()">
+            <div class="lightbox-card glass glow-glow">
+                <div class="lightbox-preview-box" id="lightbox-img-slot"></div>
+                <h3 id="modal-title" style="margin-bottom: 12px; color:#fff; font-size: 20px; font-weight: 600;"></h3>
+                <p id="modal-desc" style="color:#a097b2; font-size:14.5px; line-height:1.65; font-weight: 400;"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('user_id') || 'default_user_2026';
+            const backBtn = document.getElementById('back-to-session-btn');
+            if (backBtn) {
+                backBtn.href = `/chat/{{ char }}?user_id=${userId}`;
+            }
+        });
+
+        function openLightbox(score, desc, imagePath) {
+            document.getElementById('modal-title').innerText = "Milestone Entry — Level (" + score + ")";
+            document.getElementById('modal-desc').innerText = desc;
+            
+            const targetContainer = document.getElementById('lightbox-img-slot');
+            targetContainer.innerHTML = `<img src="/static/${imagePath}" style="width:100%; height:100%; object-fit:cover;" onerror="this.outerHTML='<div style=\'display:flex; width:100%; height:100%; align-items:center; justify-content:center; color:gray; font-size:13px; font-style:italic;\'>Display image offline</div>'">`;
+            
+            document.getElementById('lightbox').style.display = 'flex';
+        }
+        
+        function closeLightbox() {
+            document.getElementById('lightbox').style.display = 'none';
+        }
+    </script>
+
+    <!-- CPM Advertisement Network Injection Script -->
+    <script src="https://pl29685963.effectivecpmnetwork.com/aa/67/39/aa6739f3ca5a3359a953f59691ef2bba.js"></script>
+</body>
+</html>
