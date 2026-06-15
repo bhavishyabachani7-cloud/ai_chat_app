@@ -35,6 +35,10 @@
         <button onclick="setMode('bold', this)">😏 Seductive</button>
         <button onclick="setMode('intense', this)">🔥 Uninhibited</button>
         <button onclick="setMode('roleplay', this)">🎭 Story-Driven</button>
+        
+        <a id="gallery-vault-link" href="/gallery/{{ char }}" style="text-decoration: none; margin-left: auto;">
+            <button style="background: linear-gradient(135deg, #f472b6, #d946ef); color: white; border-color: transparent; font-weight: 600; padding: 10px 20px; border-radius: 999px; cursor: pointer;">👗 View Outfits</button>
+        </a>
     </div>
 
     <div id="chat-box"></div>
@@ -56,17 +60,13 @@
     const CHARACTER = "{{ char }}";
     const CHARACTER_IMAGE = "{{ characters[char].image }}";
     
-    // Default global system tracking parameter initialization
     let currentLang = "english"; 
 
     function toggleLanguage(lang, element) {
         currentLang = lang;
-        
-        // Wipe old active validation states across buttons
         document.querySelectorAll('.lang-toggle-btn').forEach(btn => btn.classList.remove('active'));
         element.classList.add('active');
         
-        // Dynamically shift placeholders to signal tracking shifts to the user
         const inputField = document.getElementById('msg');
         if (inputField && !inputField.hasAttribute("disabled")) {
             if (lang === 'hindi') {
@@ -76,9 +76,18 @@
             }
         }
     }
+
+    // Dynamic Parameter Passing Injection Block
+    window.addEventListener('DOMContentLoaded', () => {
+        const vaultLink = document.getElementById('gallery-vault-link');
+        if (vaultLink) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('user_id') || 'default_user_2026';
+            vaultLink.href = `/gallery/${CHARACTER}?user_id=${userId}`;
+        }
+    });
 </script>
 <script src="{{ url_for('static', filename='chat.js') }}"></script>
-
 <script src="https://pl29685963.effectivecpmnetwork.com/aa/67/39/aa6739f3ca5a3359a953f59691ef2bba.js"></script>
 </body>
 </html>
