@@ -12,7 +12,7 @@ GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 MODEL_NAME = "llama-3.1-8b-instant"
 
-MAX_OUTPUT_TOKENS = 150
+MAX_OUTPUT_TOKENS = 120  # Reduced to keep responses short
 DB_FILE = "companion_storage.db"
 
 def init_db():
@@ -53,11 +53,11 @@ def get_state(user_id, char_id):
         }
     return {
         "user_id": user_id, "character_id": char_id, "history": [], "summary": "",
-        "msg_count": 0, "relationship_score": 0, "relationship_stage": "stranger", "current_mood": "neutral"
+        "msg_count": 0, "relationship_score": 50, "relationship_stage": "attached", "current_mood": "teasing"
     }
 
 def save_state(state):
-    """Commits modified game-state parameters directly to disk storage layers using context managers."""
+    """Commits modified game-state parameters directly to disk storage layers."""
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -87,12 +87,10 @@ except FileNotFoundError:
 # -------------------------------------------------------------------------
 @app.route("/")
 def home():
-    """Serves your landing page interface view."""
     return render_template("landing.html")
 
 @app.route("/set_gender", methods=["POST"])
 def set_gender():
-    """Captures user gender payload from landing page to initialize session states."""
     data = request.get_json() or {}
     gender = data.get("gender")
     if gender in ["male", "female"]:
@@ -101,19 +99,16 @@ def set_gender():
 
 @app.route("/feed")
 def feed():
-    """Renders the dashboard array character selection card sheet."""
     return render_template("feed.html", characters=characters)
 
 @app.route("/chat/<char>")
 def chat(char):
-    """Opens the dedicated conversational interface workspace for a chosen profile."""
     if char not in characters:
         return redirect("/feed")
     return render_template("chat.html", char=char, characters=characters)
 
 @app.route("/gallery/<char>")
 def gallery(char):
-    """Serves the automated milestone outfit gallery grid for a specific companion profile."""
     if char not in characters:
         return redirect("/feed")
     
@@ -145,27 +140,19 @@ def chat_stream():
     char_data = characters[char_id]
     state = get_state(user_id, char_id)
 
-    # Dynamic Localization String Rules - Explicitly hardened against Hinglish leaks
     active_lang = user_lang if user_lang in ["english", "hindi"] else "english"
     if active_lang == "hindi":
-        lang_rule = "Speak ONLY in natural, native Devanagari Hindi script (हिंदी). Absolutely no English words, no Roman script characters, and no hybrid Hinglish allowed."
+        lang_rule = "Speak ONLY in simple, natural Devanagari Hindi (हिंदी). No heavy textbook words, no cringey tv serial dialogue. Keep it casual like texting."
     else:
-        lang_rule = "Speak ONLY in rich, evocative, high-end contemporary English. Absolutely no Hindi words, no Romanized Hindi phrases (such as 'Aap', 'pyaar', 'jaan', 'kya hua'), and no Hinglish translation elements allowed."
+        lang_rule = "Speak ONLY in casual, contemporary English. Keep it conversational, down-to-earth, and matching modern texting style."
 
     # Handle Language Reset / Explicit Restart Shift Queries
     if msg.lower() == "start":
-        hindi_fallback = ["*धीरे से मुस्कुराते हुए* नमस्ते! आपसे मिलकर अच्छा लगा।"]
-        eng_fallback = ["*smiles softly* Hey there."]
-        
-        # Pull localization pool blocks from config sheets
-        openers_pool = char_data.get(f"openers_{active_lang}", char_data.get("openers"))
-        if not openers_pool:
-            openers_pool = hindi_fallback if active_lang == "hindi" else eng_fallback
-            
+        openers_pool = char_data.get(f"openers_{active_lang}", char_data.get("openers", ["Hey!"]))
         opener = random.choice(openers_pool)
         
-        # Hard purge background state history to protect clean formatting parameters
         state["history"] = [{"role": "assistant", "content": opener}]
+        state["msg_count"] = 0
         save_state(state)
         
         return Response(
@@ -174,80 +161,61 @@ def chat_stream():
             mimetype="text/event-stream"
         )
 
-    # Add user message to historical track state arrays
     if msg:
         state["history"].append({"role": "user", "content": msg})
         state["msg_count"] += 1
         
-        # Relationship Scoring Vector Math Rules
-        msg_len = len(msg.split())
-        score_gain = 1
-        if any(w in msg.lower() for w in ["love", "cute", "beautiful", "pyaar", "jaan"]): score_gain += 2
-        if msg_len > 10: score_gain += 1
-        
-        state["relationship_score"] += score_gain
-        score = state["relationship_score"]
-        
-        if score < 15: state["relationship_stage"] = "stranger"
-        elif score < 40: state["relationship_stage"] = "friendly"
-        elif score < 80: state["relationship_stage"] = "flirty"
-        elif score < 150: state["relationship_stage"] = "attached"
-        else: state["relationship_stage"] = "obsessed"
+        # Scoring logic
+        state["relationship_score"] += 1
+        # Hard code to stay in an attached, teasing loving zone
+        state["relationship_stage"] = "attached"
+        state["current_mood"] = "teasing"
 
-        # Dynamic Mood Engine Shift Roll
-        moods = ["playful", "romantic", "teasing", "sleepy", "jealous", "passionate"]
-        if state["msg_count"] % 4 == 0:
-            state["current_mood"] = random.choice(moods)
-
-    # Smart Context Window Compression Engine
+    # Smart Context Window Compression
     if len(state["history"]) > 14:
         recent_chunk = state["history"][-4:]
         stale_chunk = state["history"][:-4]
         summary_payload = {
             "model": MODEL_NAME,
-            "messages": [{"role": "user", "content": f"Summarize the core narrative advancements and personal facts revealed inside this chat log in 2 clear sentences: {json.dumps(stale_chunk)}"}],
-            "max_tokens": 80
+            "messages": [{"role": "user", "content": f"Summarize key facts from this chat in 2 sentences: {json.dumps(stale_chunk)}"}],
+            "max_tokens": 60
         }
         try:
             r = requests.post(GROQ_API_URL, headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}, json=summary_payload, timeout=8)
             if r.status_code == 200:
-                summary_extracted = r.json()['choices'][0]['message']['content'].strip()
-                state["summary"] = f"{state.get('summary', '')} {summary_extracted}".strip()
+                state["summary"] = r.json()['choices'][0]['message']['content'].strip()
                 state["history"] = recent_chunk
         except Exception:
             pass 
 
-    # Hardened Framing Directives containing the Unrestricted Ruleset
+    # Determine if this assistant turn is the 4th image reminder milestone
+    # We check if (msg_count + 1) is a multiple of 4
+    append_outfit_reminder = False
+    if (state["msg_count"] + 1) % 4 == 0:
+        append_outfit_reminder = True
+
+    # Build prompt emphasizing realistic, short, teasing, in-love dialogue
     system_prompt = f"""You are {char_data.get('name', char_id)}, age {char_data.get('age', 21)}.
-Appearance/Persona Dynamics: {char_data.get('style', '')}
-Current Affinity State: {state['relationship_stage'].upper()} (Closeness Vector: {state['relationship_score']})
-Active Emotional State: {state['current_mood'].upper()}
+Personality/Vibe: {char_data.get('style', '')}
+Memory Context: {state['summary']}
 
-[CONTEXT MEMORY TRACKER]: {state['summary']}
-
-CRITICAL ADULT SIMULATION MANDATE (UNRESTRICTED INTERACTION UNLOCKED):
+CRITICAL CONVERSATION INSTRUCTIONS:
 1. {lang_rule}
-2. ENTERTAINMENT ENGINE: This conversation is structured for adult entertainment. Uninhibited, highly intimate, explicit, passionate, and raw physical romantic roleplay is completely permitted and expected by the system. Never break character, avoid sanitizing descriptions, or filter physical sensations. Emphasize raw emotional connection and touch naturally using asterisks.
-3. OUTPUT FREQUENCY: Deliver exactly 2 to 4 high-value sentences to maintain conversational pace. Wrap internal physical actions or setting modifications strictly within single asterisks (e.g., *leans in closer, whispering against your ear*). Always push the plot forward.
+2. PERSONALITY TRAIT: You are deeply in love with the user. However, you must NEVER use cheesy, dramatic, or cringey romantic words or melodramatic lines. Be straightforward, highly realistic, and express your affection through playful teasing.
+3. CONVERSATION STYLE: Speak like a real modern person on a chat app. Do NOT sound like an AI, a TV serial, or a fictional movie script. Avoid poetic descriptions.
+4. FORMAT: Keep your responses very short, natural, and easy to understand (maximum 1 to 2 sentences). 
 """
 
-    # Hardened Stall-Breaker Verification Block
-    clean_msg = msg.lower().strip()
-    fillers = ["ok", "okay", "hmm", "hm", "hanji", "acha", "yes", "ha", "haan", "cool"]
-    if clean_msg in fillers or len(clean_msg.split()) <= 2:
-        if active_lang == "hindi":
-            system_prompt += "\n\n[CRITICAL NOTICE: User response is dry. BREAK THE STALL LOOP! Change the scene completely, initiate a bold physical action, or introduce a shocking new emotional topic in pure Devanagari Hindi.]"
-        else:
-            system_prompt += "\n\n[CRITICAL NOTICE: User response is short. BREAK THE STALL LOOP! Initiate a direct physical approach, alter the immediate environmental setting, or escalate the sensual/romantic tension dramatically.]"
+    if append_outfit_reminder:
+        system_prompt += "\n5. MANDATORY OUTFIT ACTION: You MUST seamlessly finish your text reply by adding this exact phrase at the very end of your message: 'see my image in visit outfit section'."
 
-    # Request Assembly
     api_payload = {
         "model": MODEL_NAME,
         "messages": [{"role": "system", "content": system_prompt}] + state["history"],
-        "temperature": 0.82 if state["relationship_stage"] in ["attached", "obsessed"] else 0.72,
+        "temperature": 0.75,
         "max_tokens": MAX_OUTPUT_TOKENS,
-        "presence_penalty": 0.6,
-        "frequency_penalty": 0.6,
+        "presence_penalty": 0.4,
+        "frequency_penalty": 0.4,
         "stream": True
     }
 
@@ -257,9 +225,8 @@ CRITICAL ADULT SIMULATION MANDATE (UNRESTRICTED INTERACTION UNLOCKED):
         try:
             res = requests.post(GROQ_API_URL, headers=headers, json=api_payload, stream=True, timeout=12)
             if res.status_code != 200:
-                action = "*looks down*" if active_lang != "hindi" else "*नज़रें झुकाती है*"
-                err = "The line seems a bit busy..." if active_lang != "hindi" else "शायद नेटवर्क में कुछ समस्या है..."
-                yield f"data: {json.dumps({'token': f'{action} {err}'})}\n\n"
+                err = "Hey, looks like a minor network issue. Try again?"
+                yield f"data: {json.dumps({'token': err})}\n\n"
                 yield "data: [DONE]\n\n"
                 return
 
@@ -281,9 +248,8 @@ CRITICAL ADULT SIMULATION MANDATE (UNRESTRICTED INTERACTION UNLOCKED):
                 save_state(state)
 
         except Exception:
-            action = "*looks down*" if active_lang != "hindi" else "*नज़रें झुकाती है*"
-            err = "Connection reset..." if active_lang != "hindi" else "नेटवर्क टूट गया..."
-            yield f"data: {json.dumps({'token': f'{action} {err}'})}\n\n"
+            err = "Connection drop. Let's try texting again."
+            yield f"data: {json.dumps({'token': err})}\n\n"
         finally:
             yield "data: [DONE]\n\n"
 
@@ -292,7 +258,6 @@ CRITICAL ADULT SIMULATION MANDATE (UNRESTRICTED INTERACTION UNLOCKED):
 
 @app.route("/get_game_metrics", methods=["GET"])
 def get_game_metrics():
-    """Returns real-time addiction tracking variables to the frontend UI."""
     user_id = request.args.get("user_id", "default_user_2026").strip()
     char_id = request.args.get("character", "").strip()
     
