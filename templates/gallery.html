@@ -150,7 +150,7 @@
 
     <div class="feed-header">
         <h2>{{ char }} — Vault Matrix</h2>
-        <span>Progress through milestone affinity tracks to see character look adaptations.</span>
+        <span>View your companion's outfit unlocked look variations directly here.</span>
         <div style="margin-top: 18px;">
             <a id="back-to-session-btn" href="/chat/{{ char }}" class="back-feed-btn">← Return to Session</a>
         </div>
@@ -158,20 +158,31 @@
 
     <div class="gallery-grid">
         {% for score_str, description in character.outfit_milestones.items() %}
-        {% set score_needed = score_str | int %}
-        {% set is_unlocked = current_score >= score_needed %}
+        {% set milestone_val = score_str | int %}
+        
+        {# Shift target calculation to follow our new scannable 4-message layout #}
+        {% if milestone_val == 0 %}
+            {% set msgs_needed = 0 %}
+        {% elif milestone_val == 10 %}
+            {% set msgs_needed = 4 %}
+        {% else %}
+            {% set msgs_needed = 8 %}
+        {% endif %}
+        
+        {# Check progression based on raw chat counter #}
+        {% set is_unlocked = current_score >= milestone_val %}
         {% set milestone_image = character.image.replace('.png', '') + '_' + score_str + '.png' %}
         
         <div class="gallery-card {% if not is_unlocked %}locked-card{% endif %}" 
-             {% if is_unlocked %}onclick="openLightbox('{{ score_str }}', '{{ description }}', '{{ milestone_image }}')"{% endif %}>
+             {% if is_unlocked %}onclick="openLightbox('{{ msgs_needed }}', '{{ description }}', '{{ milestone_image }}')"{% endif %}>
             
             <div class="gallery-img-holder">
-                <span class="milestone-badge">Affinity Target: {{ score_str }}+</span>
+                <span class="milestone-badge">Unlock At: {{ msgs_needed }} Chats</span>
                 
                 {% if not is_unlocked %}
                 <div class="lock-overlay">
                     <span class="lock-icon">🔒</span>
-                    <span>Locked (Requires {{ score_needed }} Score)</span>
+                    <span>Locked (Send {{ msgs_needed }} Messages)</span>
                 </div>
                 {% endif %}
                 
@@ -190,7 +201,7 @@
                 {% if is_unlocked %}
                 <p>{{ description[:70] }}...</p>
                 {% else %}
-                <p style="color: rgba(255,255,255,0.2); font-style: italic;">Keep chatting to unveil this confidential outfit adaptation profile tracker...</p>
+                <p style="color: rgba(255,255,255,0.2); font-style: italic;">Keep chatting to view this outfit alteration file style...</p>
                 {% endif %}
             </div>
         </div>
@@ -218,8 +229,8 @@
             }
         });
 
-        function openLightbox(score, desc, imagePath) {
-            document.getElementById('modal-title').innerText = "Milestone Entry — Level (" + score + ")";
+        function openLightbox(msgsCount, desc, imagePath) {
+            document.getElementById('modal-title').innerText = "Outfit File Entry — Unlocked Profile";
             document.getElementById('modal-desc').innerText = desc;
             
             const targetContainer = document.getElementById('lightbox-img-slot');
