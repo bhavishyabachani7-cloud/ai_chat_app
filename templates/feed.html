@@ -34,8 +34,33 @@
             </div>
         </a>
 
-        <!-- DYNAMIC NATIVE AD INJECTION -->
-        {% if loop.index == 2 %}
+        <!-- AD UNIT POSITION #2: Adsterra 300x250 Display Banner -->
+        {% if loop.index == 1 %}
+        <div class="card character-card ad-card-wrapper" style="border-color: rgba(124, 58, 237, 0.2); display: flex; flex-direction: column; min-height: 390px; background: rgba(15, 12, 26, 0.45); justify-content: space-between;">
+            <div class="img-box" style="height: 250px; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.2); overflow: hidden; padding: 10px 0;">
+                <script>
+                  atOptions = {
+                    'key' : 'da4ef7e1bb5f350c37137a5635fefb98',
+                    'format' : 'iframe',
+                    'height' : 250,
+                    'width' : 300,
+                    'params' : {}
+                  };
+                </script>
+                <script src="https://www.highperformanceformat.com/da4ef7e1bb5f350c37137a5635fefb98/invoke.js"></script>
+            </div>
+            <div class="info" style="position: relative; background: #09090b; padding: 14px 22px; border-top: 1px solid rgba(255, 255, 255, 0.05);">
+                <h3 style="font-size: 15px; color: #a5b4fc; display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 10px; background: rgba(165, 180, 252, 0.15); padding: 2px 6px; border-radius: 4px; text-transform: uppercase;">Sponsored</span>
+                    Recommended For You
+                </h3>
+                <p style="font-size: 12px; color: #71717a; margin-top: 2px;">Check out partners tailored to your vibes...</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- AD UNIT POSITION #4: Native Banner Placement -->
+        {% if loop.index == 3 %}
         <div class="card character-card ad-card-wrapper" style="border-color: rgba(124, 58, 237, 0.25); display: flex; flex-direction: column; min-height: 390px;">
             <div class="img-box" style="height: auto; flex: 1; min-height: 280px; display: flex; align-items: center; justify-content: center; background: rgba(15, 12, 26, 0.3);">
                 <!-- Adsterra Container Render Target -->
@@ -50,6 +75,22 @@
             </div>
         </div>
         {% endif %}
+
+        <!-- AD UNIT POSITION #6: Custom Styled Premium Smart Link Card -->
+        {% if loop.index == 5 %}
+        <a href="https://www.effectivecpmnetwork.com/re0pau1zc9?key=32d37dd4aef0cef80fbc76e8a97727f1" target="_blank" class="card character-card ad-card-wrapper" style="border: 1px dashed #ec4899; display: flex; flex-direction: column; min-height: 390px; text-decoration: none; background: linear-gradient(to bottom, rgba(236, 72, 153, 0.05), rgba(9, 9, 11, 1));">
+            <div class="img-box" style="height: auto; flex: 1; min-height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(236, 72, 153, 0.02); gap: 10px;">
+                <span style="font-size: 56px; filter: drop-shadow(0 0 15px rgba(236, 72, 153, 0.6));">🔓</span>
+                <span style="font-size: 11px; color: #f472b6; background: rgba(236, 72, 153, 0.15); padding: 3px 10px; border-radius: 20px; font-weight: 6px; letter-spacing: 0.5px; text-transform: uppercase;">Premium Active</span>
+            </div>
+            <div class="info" style="position: relative; background: transparent; padding: 16px 22px;">
+                <h3 style="font-size: 16px; color: #fdf2f8; display: flex; align-items: center; gap: 6px;">
+                    Unlock Premium Chapters
+                </h3>
+                <p style="font-size: 12px; color: #a1a1aa; margin-top: 4px;">Click to clear character limits, skip wait times, and open explicit channels instantly. ✨</p>
+            </div>
+        </a>
+        {% endif %}
         
         {% endfor %}
     </div>
@@ -62,10 +103,9 @@
         document.getElementById("searchBox").addEventListener("input", function () {
             let query = this.value.toLowerCase();
             
-            // Modified selector loop to make sure search filters out the ad unit card alongside normal elements
+            // Adjusted filter selector loops to handle filtering out all ad elements simultaneously when queries exist
             document.querySelectorAll(".character-card").forEach(card => {
                 if (card.classList.contains('ad-card-wrapper')) {
-                    // Hide ad container block if user starts explicitly typing values into filter tool
                     card.style.display = query ? "none" : "flex";
                 } else {
                     let text = card.innerText.toLowerCase();
