@@ -147,18 +147,15 @@
         }
     }
 
-    // Helper to pull clean query configuration payloads
     function getUserId() {
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get('user_id') || 'default_user_2026';
     }
 
-    // Action execution layer for main pop-up redirects
-    function navigateToGallery() {
+    document.getElementById('galleryAlert').onclick = function() {
         window.location.href = `/gallery/${CHARACTER}?user_id=${getUserId()}`;
-    }
+    };
 
-    // Safely dismiss the pop-up without firing background anchor handlers
     function dismissAlert(event) {
         event.stopPropagation();
         const alertBar = document.getElementById('galleryAlert');
@@ -168,7 +165,6 @@
         }
     }
 
-    // Dynamic Parameter Passing Injection Block
     window.addEventListener('DOMContentLoaded', () => {
         const vaultLink = document.getElementById('gallery-vault-link');
         if (vaultLink) {
@@ -177,6 +173,16 @@
     });
 </script>
 <script src="{{ url_for('static', filename='chat.js') }}"></script>
+
+<!-- Monetag In-Page Push Activation -->
+<script>
+    (function(s){
+        s.dataset.zone='11216874';
+        s.src='https://nap5k.com/tag.min.js';
+    })([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')));
+</script>
+
+<!-- Adsterra Social Bar Core Engine -->
 <script src="https://pl29685963.effectivecpmnetwork.com/aa/67/39/aa6739f3ca5a3359a953f59691ef2bba.js"></script>
 </body>
 </html>
