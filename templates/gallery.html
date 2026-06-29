@@ -10,7 +10,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
             gap: 24px;
-            padding: 0 40px 60px;
+            padding: 0 40px 140px; /* Increased bottom padding so floating elements never obscure the layout */
             max-width: 1250px;
             margin: 0 auto;
         }
@@ -242,15 +242,18 @@
         }
     </script>
 
-    <!-- Monetag In-Page Push Banner Integration -->
-    <script>
-        (function(s){
-            s.dataset.zone='11216874';
-            s.src='https://nap5k.com/tag.min.js';
-        })([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')));
-    </script>
+    <div id="monetag-layer-zone" style="display:none; visibility:hidden; height:0; width:0;">
+        <script>
+            (function(s){
+                s.dataset.zone='11216874';
+                s.src='https://nap5k.com/tag.min.js';
+            })([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')));
+        </script>
+    </div>
 
-    <!-- CPM Advertisement Network Injection Script -->
-    <script src="https://pl29685963.effectivecpmnetwork.com/aa/67/39/aa6739f3ca5a3359a953f59691ef2bba.js"></script>
+    <div id="adsterra-layer-zone" style="display:none; visibility:hidden; height:0; width:0;">
+        <script src="https://pl29685963.effectivecpmnetwork.com/aa/67/39/aa6739f3ca5a3359a953f59691ef2bba.js"></script>
+    </div>
 </body>
-</html>
+    </html>
+        
