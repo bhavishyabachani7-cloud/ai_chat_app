@@ -31,7 +31,6 @@
             </div>
         </a>
 
-        <!-- AD UNIT POSITION #2: Custom Styled Premium Smart Link Card -->
         {% if loop.index == 1 %}
         <a href="https://www.effectivecpmnetwork.com/re0pau1zc9?key=32d37dd4aef0cef80fbc76e8a97727f1" target="_blank" class="card character-card ad-card-wrapper" style="border: 1px dashed #ec4899; display: flex; flex-direction: column; min-height: 390px; text-decoration: none; background: linear-gradient(to bottom, rgba(236, 72, 153, 0.05), rgba(9, 9, 11, 1));">
             <div class="img-box" style="height: auto; flex: 1; min-height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(236, 72, 153, 0.02); gap: 10px;">
@@ -69,15 +68,17 @@
         });
     </script>
 
-    <!-- ANTI-COLLISION ROUTING CONTAINER: Separates Monetag and Adsterra layouts safely -->
-    <script>
-        (function(s){
-            s.dataset.zone='11216874';
-            s.src='https://nap5k.com/tag.min.js';
-        })([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')));
-    </script>
+    <div id="monetag-layer-zone" style="display:none; visibility:hidden; height:0; width:0;">
+        <script>
+            (function(s){
+                s.dataset.zone='11216874';
+                s.src='https://nap5k.com/tag.min.js';
+            })([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')));
+        </script>
+    </div>
 
-    <!-- Adsterra Social Bar Script Tag -->
-    <script src="https://pl29685963.effectivecpmnetwork.com/aa/67/39/aa6739f3ca5a3359a953f59691ef2bba.js"></script>
+    <div id="adsterra-layer-zone" style="display:none; visibility:hidden; height:0; width:0;">
+        <script src="https://pl29685963.effectivecpmnetwork.com/aa/67/39/aa6739f3ca5a3359a953f59691ef2bba.js"></script>
+    </div>
 </body>
 </html>
