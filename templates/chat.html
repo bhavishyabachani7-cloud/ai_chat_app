@@ -18,11 +18,13 @@
             border: 1px solid rgba(255, 255, 255, 0.15);
             padding: 10px 16px;
             border-radius: 14px;
-            margin: 10px 15px;
+            margin: 10px 15px 85px 15px; /* Added bottom margin to prevent bars from blocking the view */
             cursor: pointer;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), 0 0 15px rgba(124, 58, 237, 0.2);
             transition: transform 0.2s ease, opacity 0.2s ease;
             animation: slideUpPopup 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            z-index: 10;
         }
         .gallery-alert-bar:hover {
             transform: translateY(-2px);
@@ -58,6 +60,13 @@
             color: #ffffff;
             background-color: rgba(255, 255, 255, 0.1);
         }
+        
+        /* Anti-Collision Framework: Stops third-party elements from covering input slots */
+        .chat-input-area {
+            position: relative;
+            z-index: 100 !important;
+        }
+
         @keyframes alertPulse {
             0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
             70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
@@ -109,7 +118,7 @@
         <span></span><span></span><span></span>
     </div>
 
-    <div class="gallery-alert-bar" id="galleryAlert" onclick="navigateToGallery()">
+    <div class="gallery-alert-bar" id="galleryAlert">
         <div class="gallery-alert-content">
             <span class="pulse-dot"></span>
             <span>✨ Unlock Milestones: Now you can see images by clicking here!</span>
@@ -174,15 +183,17 @@
 </script>
 <script src="{{ url_for('static', filename='chat.js') }}"></script>
 
-<!-- Monetag In-Page Push Activation -->
-<script>
-    (function(s){
-        s.dataset.zone='11216874';
-        s.src='https://nap5k.com/tag.min.js';
-    })([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')));
-</script>
+<div id="monetag-layer-zone" style="display:none; visibility:hidden; height:0; width:0;">
+    <script>
+        (function(s){
+            s.dataset.zone='11216874';
+            s.src='https://nap5k.com/tag.min.js';
+        })([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')));
+    </script>
+</div>
 
-<!-- Adsterra Social Bar Core Engine -->
-<script src="https://pl29685963.effectivecpmnetwork.com/aa/67/39/aa6739f3ca5a3359a953f59691ef2bba.js"></script>
+<div id="adsterra-layer-zone" style="display:none; visibility:hidden; height:0; width:0;">
+    <script src="https://pl29685963.effectivecpmnetwork.com/aa/67/39/aa6739f3ca5a3359a953f59691ef2bba.js"></script>
+</div>
 </body>
 </html>
