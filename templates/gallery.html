@@ -160,7 +160,6 @@
         {% for score_str, description in character.outfit_milestones.items() %}
         {% set milestone_val = score_str | int %}
         
-        {# Shift target calculation to follow our new scannable 4-message layout #}
         {% if milestone_val == 0 %}
             {% set msgs_needed = 0 %}
         {% elif milestone_val == 10 %}
@@ -169,7 +168,6 @@
             {% set msgs_needed = 8 %}
         {% endif %}
         
-        {# Check progression based on raw chat counter #}
         {% set is_unlocked = current_score >= milestone_val %}
         {% set milestone_image = character.image.replace('.png', '') + '_' + score_str + '.png' %}
         
@@ -242,6 +240,14 @@
         function closeLightbox() {
             document.getElementById('lightbox').style.display = 'none';
         }
+    </script>
+
+    <!-- Monetag In-Page Push Banner Integration -->
+    <script>
+        (function(s){
+            s.dataset.zone='11216874';
+            s.src='https://nap5k.com/tag.min.js';
+        })([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')));
     </script>
 
     <!-- CPM Advertisement Network Injection Script -->
